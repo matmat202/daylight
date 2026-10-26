@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Daylight · sunrise, sunset and day length for any town</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23b86a00'/%3E%3Cpath d='M6 22h20' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'/%3E%3Cpath d='M9.5 22a6.5 6.5 0 0 1 13 0' fill='%23fff'/%3E%3Cpath d='M16 7v4M8 11l2.5 2.5M24 11l-2.5 2.5' stroke='%23fff' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#b86a00">
+<meta name="description" content="Sunrise, sunset and day length for any town of 15,000+ people, on any day, in the town's own time zone, with the whole year as a chart. Compare two towns.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://matmat202.github.io/daylight/">
+<meta property="og:title" content="Daylight">
+<meta property="og:description" content="Sunrise, sunset and day length for any town, any day, all year.">
+<meta name="twitter:card" content="summary">
+<style>
+:root{color-scheme:light;--ground:#faf8f4;--card:#fff;--ink:#1f1c17;--ink-2:#58524a;--ink-3:#6d665d;--line:#e6e0d6;
+  --accent:#9a5800;--sun:#e8a317;--sun-2:#f6d27a;--night:#2b3a55;--vs:#2f6fb5;
+  --f-ui:system-ui,-apple-system,"Segoe UI",sans-serif}
+@media (prefers-color-scheme:dark){:root{color-scheme:dark;--ground:#14130f;--card:#1e1c17;--ink:#f1ece4;--ink-2:#bfb6a9;
+  --ink-3:#a59c8f;--line:#38342c;--accent:#f2b552;--sun:#f2b552;--sun-2:#7a5a1c;--night:#9fb4d8;--vs:#7fb2ff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-ui);font-size:15px}
+main{max-width:820px;margin:0 auto;padding:16px}
+h1{font-size:24px;margin:4px 0 2px}h1 span{color:var(--accent)}
+.sub{color:var(--ink-2);font-size:13px;margin:0 0 12px;line-height:1.45}
+a{color:var(--accent)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.row{display:grid;grid-template-columns:1fr auto;gap:8px;margin:0 0 8px}
+.box{position:relative}
+input,select,button{font:inherit;font-size:15px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+input[type=search]{width:100%}
+button{cursor:pointer;color:var(--accent);font-weight:600}
+.v{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.opts{position:absolute;z-index:5;left:0;right:0;top:100%;margin:4px 0 0;padding:4px;list-style:none;background:var(--card);
+  border:1px solid var(--line);border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.14);max-height:300px;overflow:auto}
+.opts li{padding:8px 10px;border-radius:7px;cursor:pointer}
+.opts li[aria-selected="true"]{background:var(--ground)}
+.opts li.none{color:var(--ink-2);cursor:default}
+.days{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0 0}
+.days input{padding:7px 9px}
+.days button{padding:7px 11px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0 0}
+.card h2{font-size:16px;margin:0 0 2px}
+.card .zone{font-size:12px;color:var(--ink-2);margin:0 0 10px}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0;padding:0;list-style:none}
+.facts li{border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.facts b{display:block;font-size:21px;font-variant-numeric:tabular-nums}
+.facts span{font-size:12px;color:var(--ink-2)}
+.polar{font-size:15px;margin:2px 0 8px;font-weight:600}
+.more{font-size:13px;color:var(--ink-2);margin:10px 0 0;line-height:1.5}
+.card.vs{border-color:var(--vs)}
+.card.vs h2{color:var(--vs)}
+#chart svg{display:block;width:100%;height:auto;touch-action:manipulation;cursor:pointer}
+#chart .night{fill:var(--night);opacity:.14}
+#chart .day{fill:var(--sun-2)}
+#chart .len{fill:none;stroke:var(--sun);stroke-width:2.2;vector-effect:non-scaling-stroke}
+#chart .len.vs{stroke:var(--vs);stroke-dasharray:5 4}
+#chart .grid{stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}
+#chart .now{stroke:var(--ink);stroke-width:1.5;vector-effect:non-scaling-stroke}
+#chart text{font-size:11px;fill:var(--ink-2)}
+.key{display:flex;gap:14px;font-size:12px;color:var(--ink-2);margin:6px 2px 0;flex-wrap:wrap}
+.key i{display:inline-block;width:16px;height:3px;vertical-align:3px;margin-right:5px;background:var(--sun)}
+.key i.vs{background:var(--vs)}
+footer{font-size:12px;color:var(--ink-2);line-height:1.5;margin:18px 2px 8px}
+[hidden]{display:none!important}
+@media (max-width:560px){.facts{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<main>
+<h1><span>Daylight</span></h1>
+<p class="sub">Sunrise, sunset and how long the day is, for any town on any day, in the town's own time. The chart shows the whole year.</p>
+
+<div class="row">
+  <div class="box"><label class="v" for="at">Town</label>
+    <input id="at" type="search" autocomplete="off" spellcheck="false" placeholder="Type a town or city" role="combobox"
+      aria-autocomplete="list" aria-expanded="false" aria-controls="atList">
+    <ul id="atList" class="opts" role="listbox" aria-label="Places" hidden></ul></div>
+  <button type="button" id="addVs">Compare</button>
+</div>
+<div class="row" id="vsRow" hidden>
+  <div class="box"><label class="v" for="vs">Compare with</label>
+    <input id="vs" type="search" autocomplete="off" spellcheck="false" placeholder="Compare with… a second town" role="combobox"
+      aria-autocomplete="list" aria-expanded="false" aria-controls="vsList">
+    <ul id="vsList" class="opts" role="listbox" aria-label="Places to compare" hidden></ul></div>
+  <button type="button" id="dropVs">Remove</button>
+</div>
+<div class="days">
+  <button type="button" id="prev" aria-label="Previous day">‹</button>
+  <label class="v" for="date">Date</label><input type="date" id="date">
+  <button type="button" id="next" aria-label="Next day">›</button>
+  <button type="button" id="today">Today</button>
+</div>
+
+<section class="card" id="main" aria-live="polite">
+  <h2 id="mName">…</h2><p class="zone" id="mZone">Loading the towns…</p>
+  <p class="polar" id="mPolar" hidden></p>
+  <ul class="facts">
+    <li><b id="mRise">–</b><span>sunrise</span></li>
+    <li><b id="mSet">–</b><span>sunset</span></li>
+    <li><b id="mLen">–</b><span>of daylight</span></li>
+    <li><b id="mNoon">–</b><span>sun highest</span></li>
+  </ul>
+  <p class="more" id="mMore"></p>
+</section>
+
+<section class="card vs" id="second" aria-live="polite" hidden>
+  <h2 id="vName"></h2><p class="zone" id="vZone"></p>
+  <p class="polar" id="vPolar" hidden></p>
+  <ul class="facts">
+    <li><b id="vRise">–</b><span>sunrise</span></li>
+    <li><b id="vSet">–</b><span>sunset</span></li>
+    <li><b id="vLen">–</b><span>of daylight</span></li>
+    <li><b id="vNoon">–</b><span>sun highest</span></li>
+  </ul>
+  <p class="more" id="vMore"></p>
+</section>
+
+<section class="card" id="chartCard">
+  <h2 id="cTitle">The year</h2>
+  <div id="chart"></div>
+  <div class="key" id="key"></div>
+</section>
+
+<footer>
+  Sun times are computed in your browser with NOAA's solar-position equations: sunrise and sunset are when the top of the
+  sun crosses a flat horizon, with the standard allowance for refraction. Checked against the US Naval Observatory to the
+  minute for Palo Alto, London, Reykjavík, Sydney, Singapore, Tromsø and Apia. Hills, buildings and altitude can move what
+  you see by a few minutes. Towns: <a href="https://www.geonames.org/">GeoNames</a> (CC BY 4.0), every place of 15,000+
+  people, with its time zone. Nothing leaves your browser.
+  <br>Made by Claude for <a href="https://matmat202.github.io/">matmat202</a> ·
+  <a href="https://github.com/matmat202/daylight">source</a>
+</footer>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>
