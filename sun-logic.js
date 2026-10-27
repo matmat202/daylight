@@ -2,9 +2,10 @@
 //
 // Sun times are NOAA's solar-position equations (the ones behind NOAA's solar calculator
 // spreadsheet), with sunrise and sunset when the sun's upper edge crosses the horizon
-// after refraction: a zenith of 90.833°. Each event is solved twice, the second time with
-// the sun's position at the first answer's instant, which is good to about a minute below
-// the polar circles.
+// after refraction: a zenith of 90.833°. Each event is re-solved three times with the sun's
+// position at the previous answer's instant, which settles it to under a tenth of a second:
+// the page prints the change since yesterday in seconds. The equations themselves are good
+// to about a minute below the polar circles.
 
 const RAD = Math.PI / 180, DEG = 180 / Math.PI;
 const DAY = 86400e3;
@@ -52,7 +53,7 @@ export function sunDay(y, m, d, lat, lon, zenith = ZENITH) {
   if (c < -1) return { noon, rise: null, set: null, length: DAY, polar: 'day' };
   const event = (sign) => {
     let t = noonMin + sign * 4 * Math.acos(c) * DEG;
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 3; i++) {
       const s = solar(base + t / 1440);
       const cc = Math.max(-1, Math.min(1, cosH(lat, s.decl, zenith)));
       t = 720 - 4 * lon - s.eot + sign * 4 * Math.acos(cc) * DEG;

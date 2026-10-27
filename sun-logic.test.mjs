@@ -42,9 +42,53 @@ const mid = L.sunOn([2026, 6, 21], tromso), dark = L.sunOn([2026, 12, 21], troms
 eq('Tromsø, June: midnight sun (USNO: no rise or set, sun up all day)', [mid.polar, mid.rise, mid.length], ['day', null, 86400e3]);
 eq('Tromsø, December: polar night (USNO: no rise or set)', [dark.polar, dark.set, dark.length], ['night', null, 0]);
 atMin('Tromsø, polar night still has a noon', dark.noon, '2026-12-21T10:42');
+// USNO, fetched 2026-10-27: the days the polar night and the midnight sun begin and end.
+// The last and first sunrises are 22 and 50 minutes long, the hardest days to get right.
+const edges = [];
+for (let k = [2026, 1, 1], prev = 'night'; k[0] === 2026; k = L.addDays(k, 1)) {
+  const s = L.sunOn(k, tromso); if (s.polar !== prev) edges.push(`${k[1]}-${k[2]} ${s.polar}`); prev = s.polar;
+}
+eq('Tromsø 2026: polar night ends 15 Jan, midnight sun 18 May-25 Jul, polar night from 28 Nov (USNO)', edges, ['1-15 null', '5-18 day', '7-26 null', '11-28 night']);
+const jan15 = L.sunOn([2026, 1, 15], tromso), nov27 = L.sunOn([2026, 11, 27], tromso);
+atMin('Tromsø, 15 Jan: the first sunrise', jan15.rise, '2026-01-15T10:29');
+atMin('Tromsø, 15 Jan: and its sunset', jan15.set, '2026-01-15T11:19');
+atMin('Tromsø, 27 Nov: the last sunrise', nov27.rise, '2026-11-27T10:20');
+atMin('Tromsø, 27 Nov: and its sunset', nov27.set, '2026-11-27T10:42');
 // Without the step to the right solar day, Apia's 27 October would be its 28th.
 const naive = L.sunDay(2026, 10, 27, -13.8333, -171.7667);
 ok('Apia: the naive solar day is the wrong local date', JSON.stringify(L.ymdIn(naive.noon, 'Pacific/Apia')) === '[2026,10,28]');
+
+// --- the solar equations, against NOAA's own code --------------------------------------
+// gml.noaa.gov/grad/solcalc/main.js, fetched 2026-10-27: calcSunDeclination and
+// calcEquationOfTime at these instants (y, m, d, hour UTC). Across 1950-2100 at weekly steps
+// ours agreed to 1e-13; USNO's minutes above cannot see a wrong coefficient that moves the
+// sun by seconds, and the page prints the change since yesterday to the second.
+const NOAA = [[[1950, 1, 1, 0], -23.070776202, -3.245631473], [[2000, 1, 1, 12], -23.032515938, -3.301258802],
+  [[2026, 3, 20, 14.5], -0.002124227, -7.40214195], [[2026, 6, 21, 20], 23.437318513, -1.896727833],
+  [[2026, 10, 27, 3], -12.752696686, 16.141681392], [[2026, 12, 21, 20], -23.437833655, 1.757763975],
+  [[2050, 9, 23, 6], -0.169559248, 7.575862579], [[2099, 7, 4, 18], 22.781760546, -4.733078292]];
+for (const [[y, m, d, hr], decl, eot] of NOAA) {
+  const s = L.solar(L.jd0(y, m, d) + hr / 24);
+  ok(`NOAA ${y}-${m}-${d} ${hr}h: declination and equation of time`, Math.abs(s.decl - decl) < 1e-8 && Math.abs(s.eot - eot) < 1e-8, JSON.stringify([s.decl, s.eot]));
+}
+// Each time sunDay returns is the instant the equations put the sun there, not an
+// approximation to it: put the sun's position AT that instant back in and the same instant
+// comes out, to 0.1 s. Two refinement passes left up to 1.25 s here (and a wrong second in
+// "since yesterday" on 3 of 2,184 town-days); three leave 0.05 s.
+const fixedPoint = (lat, lon, [y, m, d], zenith = L.ZENITH) => {
+  const s = L.sunDay(y, m, d, lat, lon, zenith), base = L.jd0(y, m, d), u = Date.UTC(y, m - 1, d);
+  const at = (ms) => L.solar(base + (ms - u) / 864e5);
+  const ha = (ms) => { const x = at(ms), R = Math.PI / 180;
+    return Math.acos(Math.max(-1, Math.min(1, Math.cos(zenith * R) / (Math.cos(lat * R) * Math.cos(x.decl * R)) - Math.tan(lat * R) * Math.tan(x.decl * R)))) * 180 / Math.PI; };
+  const solarNoon = (ms) => u + (720 - 4 * lon - at(ms).eot) * 60e3;
+  const errs = [Math.abs(solarNoon(s.noon) - s.noon)];
+  if (!s.polar) errs.push(Math.abs(solarNoon(s.rise) - 4 * ha(s.rise) * 60e3 - s.rise), Math.abs(solarNoon(s.set) + 4 * ha(s.set) * 60e3 - s.set));
+  return Math.max(...errs);
+};
+let worstFix = 0;
+for (const [lat, lon] of [[37.44, -122.14], [64.13, -21.9], [-33.87, 151.2], [1.29, 103.85], [65.5, 25], [-54.8, -68.3]])
+  for (let k = [2026, 1, 1]; k[0] === 2026; k = L.addDays(k, 5)) for (const z of [L.ZENITH, L.CIVIL]) worstFix = Math.max(worstFix, fixedPoint(lat, lon, k, z));
+ok('every rise, set and noon is a fixed point of the equations (0.1 s)', worstFix < 100, `${worstFix.toFixed(0)} ms`);
 
 // --- civil twilight, against USNO (sun 6° below the horizon) -------------------------
 const civ = (date, place) => L.lightOn(date, place);
@@ -82,10 +126,13 @@ const ty = L.yearLengths(2026, tromso);
 ok('Tromsø: weeks of 24 h and weeks of 0', ty.filter((v) => v === 86400e3).length > 50 && ty.filter((v) => v === 0).length > 40, [ty.filter((v) => v === 86400e3).length, ty.filter((v) => v === 0).length]);
 const sy = L.extremes(L.yearLengths(2026, CASES[4][2]));
 eq('Sydney: the longest day is in December', L.dayOfYear(2026, sy.longest)[1], 12);
+// Weeks of 24 h at Tromsø tie: the longest day is the first of them, and so is the shortest.
+eq('extremes: the first of a tie', L.extremes([1, 1, 3, 3, 2]), { longest: 2, shortest: 0 });
 
 // --- words -------------------------------------------------------------------------------
 eq('hours and minutes', [L.hm(53098e3), L.hm(0), L.hm(86400e3)], ['14 h 45 min', '0 h 00 min', '24 h 00 min']);
 eq('change since yesterday', [L.delta(151e3), L.delta(-64e3), L.delta(4e3), L.delta(0)], ['+2 min 31 s', '−1 min 4 s', '+4 s', '±0 s']);
+eq('change since yesterday at its edges', [L.delta(60e3), L.delta(59e3), L.delta(1e3), L.delta(-1e3), L.delta(1500e3)], ['+1 min 0 s', '+59 s', '+1 s', '−1 s', '+25 min 0 s']);
 eq('dates in words', L.dateWords([2026, 12, 21]), '21 December');
 
 // --- places and URL ------------------------------------------------------------------------
@@ -102,8 +149,12 @@ eq('folded', L.matchPlaces(pl, 'TROMSO').length, 1);
 eq('label round trip', L.placeByLabel(pl, 'tromsø, troms, norway'), pl[3]);
 eq('biggest in a zone', [L.biggestIn(pl, zones, 'Europe/Oslo')[0], L.biggestIn(pl, zones, 'Asia/Tokyo')], ['Tromsø', null]);
 eq('to a place', L.toPlace(pl[3], zones), { label: 'Tromsø, Troms, Norway', lat: 69.649, lon: 18.955, tz: 'Europe/Oslo' });
+eq('labels skip an empty or repeated region', [L.placeLabel(['Monaco', '', 'Monaco']), L.placeLabel(['Singapore', 'Singapore', 'Singapore'])], ['Monaco, Monaco', 'Singapore, Singapore']);
+eq('the first zone has a biggest town', L.biggestIn(pl, zones, 'America/Chicago')[0], 'Springfield');
 const today = [2026, 10, 26];
 eq('today is not in the URL', L.encodeState({ at: 'A', date: today, today }), '?at=A');
+eq('another day, same month or same day of the month, is', [L.encodeState({ date: [2026, 10, 27], today }), L.encodeState({ date: [2026, 11, 26], today })], ['?d=2026-10-27', '?d=2026-11-26']);
+eq('names are cut at 120', L.decodeState('?at=' + 'y'.repeat(130)).at.length, 120);
 const st = { at: 'Palo Alto, California, United States', vs: 'Tromsø, Troms, Norway', date: [2026, 12, 21], today };
 eq('round trip', L.decodeState(L.encodeState(st)), { at: st.at, vs: st.vs, date: [2026, 12, 21] });
 eq('a bad date is dropped', [L.decodeState('?d=2026-02-30').date, L.decodeState('?d=junk').date], [null, null]);
@@ -117,6 +168,7 @@ if (existsSync(f)) {
   const apia = L.placeByLabel(D.places, 'Apia, Tuamasaga, Samoa');
   eq('shipped: Apia keeps Samoa time', apia && D.zones[apia[6]], 'Pacific/Apia');
   eq('shipped: palo alto', L.placeLabel(L.matchPlaces(D.places, 'palo alto')[0]), 'Palo Alto, California, United States');
+  eq('shipped: eight matches at most', L.matchPlaces(D.places, 'san').length, 8);
   eq('shipped: the biggest town in Los Angeles time', L.biggestIn(D.places, D.zones, 'America/Los_Angeles')[0], 'Los Angeles');
 } else ok('shipped: data/places.json exists (run build.py)', false);
 
