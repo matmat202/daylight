@@ -46,6 +46,23 @@ atMin('Tromsø, polar night still has a noon', dark.noon, '2026-12-21T10:42');
 const naive = L.sunDay(2026, 10, 27, -13.8333, -171.7667);
 ok('Apia: the naive solar day is the wrong local date', JSON.stringify(L.ymdIn(naive.noon, 'Pacific/Apia')) === '[2026,10,28]');
 
+// --- civil twilight, against USNO (sun 6° below the horizon) -------------------------
+const civ = (date, place) => L.lightOn(date, place);
+atMin('Palo Alto, 26 Oct: first light', civ([2026, 10, 26], { lat: 37.4419, lon: -122.143, tz: 'America/Los_Angeles' }).first, '2026-10-26T14:01');
+const rey = civ([2026, 3, 20], CASES[3][2]);
+atMin('Reykjavík, equinox: first light', rey.first, '2026-03-20T06:41');
+atMin('Reykjavík, equinox: last light', rey.last, '2026-03-20T20:31');
+const tw = civ([2026, 12, 21], tromso);
+atMin('Tromsø, polar night: twilight begins', tw.first, '2026-12-21T08:31');
+atMin('Tromsø, polar night: twilight ends', tw.last, '2026-12-21T12:53');
+eq('Tromsø, polar night: no sunrise but twilight', L.lightKind(dark, tw), 'twilight');
+// USNO: St Petersburg on 21 June has civil dusk at 21:11 UTC and dawn at 22:51, so it is not a white night.
+const spb = { lat: 59.9386, lon: 30.3141, tz: 'Europe/Moscow' };
+eq('St Petersburg, June: dark for a while, not a white night', L.lightKind(L.sunOn([2026, 6, 21], spb), civ([2026, 6, 21], spb)), null);
+const anc = { lat: 61.218, lon: -149.9, tz: 'America/Anchorage' };
+eq('Anchorage, June: the sun sets and it never gets dark', [L.sunOn([2026, 6, 21], anc).polar, civ([2026, 6, 21], anc).polar, L.lightKind(L.sunOn([2026, 6, 21], anc), civ([2026, 6, 21], anc))], [null, 'day', 'white']);
+eq('Tromsø, June: midnight sun is not called a white night', L.lightKind(mid, civ([2026, 6, 21], tromso)), null);
+
 // --- clocks in the town's own zone ------------------------------------------------------
 const lon = L.sunOn([2026, 3, 29], CASES[2][2]);
 eq('London sunrise in BST, rounded to the minute', L.clock(lon.rise, 'Europe/London', 'en-US'), '6:43 AM');

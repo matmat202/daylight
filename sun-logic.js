@@ -85,15 +85,33 @@ const same = (a, b) => cmp(a, b) === 0;
 // longitude's solar time (Samoa is UTC+13 at 172°W), the solar day computed for a date
 // can have its noon on the next or previous local date; step to the one whose noon is on
 // the date asked for.
-export function sunOn(date, place) {
+export function sunOn(date, place, zenith = ZENITH) {
   let k = date;
   for (let i = 0; i < 3; i++) {
-    const s = sunDay(k[0], k[1], k[2], place.lat, place.lon);
+    const s = sunDay(k[0], k[1], k[2], place.lat, place.lon, zenith);
     const local = ymdIn(s.noon, place.tz);
     if (same(local, date)) return s;
     k = addDays(k, cmp(local, date) < 0 ? 1 : -1);
   }
-  return sunDay(date[0], date[1], date[2], place.lat, place.lon);
+  return sunDay(date[0], date[1], date[2], place.lat, place.lon, zenith);
+}
+
+// Civil twilight: the sun 6° below the horizon, when it is light enough to see outdoors
+// without lamps. `first` and `last` are first and last light; `polar` 'day' here means it
+// never gets dark (a white night: Anchorage, Trondheim and Tampere in June), and
+// 'night' means it never gets that light.
+export const CIVIL = 96;
+export function lightOn(date, place) {
+  const s = sunOn(date, place, CIVIL);
+  return { first: s.rise, last: s.set, polar: s.polar };
+}
+
+// What the sun's own line leaves out: 'white' when the sun sets but it never gets dark,
+// 'twilight' when the sun never rises but the day still gets light. Otherwise null.
+export function lightKind(sun, light) {
+  if (light.polar === 'day' && !sun.polar) return 'white';
+  if (sun.polar === 'night' && !light.polar) return 'twilight';
+  return null;
 }
 
 // Day length for every day of a year in the town's calendar, in ms.

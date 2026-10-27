@@ -16,7 +16,11 @@ behind NOAA's solar calculator). Sunrise and sunset are when the top edge of the
 a flat horizon, with the standard allowance for atmospheric refraction (a zenith of
 90.833°). Each event is solved twice; the second pass uses where the sun is at the moment of
 the first answer. The results match the US Naval Observatory to the minute for Palo Alto,
-London, Reykjavík, Sydney, Singapore, Tromsø and Apia. Hills, tall buildings and altitude
+London, Reykjavík, Sydney, Singapore, Tromsø and Apia. First and last light are civil twilight, the moment the sun is 6° below the horizon, which
+is when you can still see outdoors without lamps; they match USNO to the minute for Palo
+Alto, Reykjavík and Tromsø. North of about 60.6° in June the sun sets but never gets 6°
+down, and the page calls that a white night (Anchorage, Trondheim, Tampere) rather than
+just printing a sunset. Hills, tall buildings and altitude
 can move what you actually see by a few minutes.
 
 A town whose clock is far from its sun time needs one extra step. Apia keeps UTC+13 at 172°W,

@@ -40,8 +40,14 @@ function card(prefix, place, date) {
   $(`${prefix}Len`).textContent = L.hm(s.length);
   $(`${prefix}Noon`).textContent = t(s.noon);
   const polar = $(`${prefix}Polar`);
-  polar.hidden = !s.polar;
-  polar.textContent = s.polar === 'day' ? 'The sun does not set today: midnight sun.' : s.polar === 'night' ? 'The sun does not rise today: polar night.' : '';
+  const lt = L.lightOn(date, place), kind = L.lightKind(s, lt);
+  polar.hidden = !s.polar && !kind;
+  polar.textContent = kind === 'white' ? 'The sun sets, but it never gets dark tonight: a white night.'
+    : kind === 'twilight' ? 'The sun does not rise today (polar night), but there is twilight around noon.'
+    : s.polar === 'day' ? 'The sun does not set today: midnight sun.' : s.polar === 'night' ? 'The sun does not rise today: polar night.' : '';
+  $(`${prefix}Light`).textContent = lt.polar === 'day' ? 'Light enough to be outdoors without lamps all night.'
+    : lt.polar === 'night' ? 'Dark all day: the sun stays more than 6° below the horizon.'
+    : `First light ${t(lt.first)} · last light ${t(lt.last)} (civil twilight, sun 6° below the horizon)`;
   const prev = L.sunOn(L.addDays(date, -1), place);
   const yl = yearOf(place, date[0]), ex = L.extremes(yl);
   const words = (i) => `${L.dateWords(L.dayOfYear(date[0], i))} (${L.hm(yl[i])})`;
