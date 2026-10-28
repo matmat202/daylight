@@ -5,6 +5,7 @@ const $ = (id) => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
 const DAY = 86400e3;
 let PLACES = [], ZONES = [];
+let MORE = null; // while the page runs on seed.json: what a search with no match says
 const state = { at: null, vs: null, date: null }; // date null = today in the town's zone
 
 const today = () => L.ymdIn(Date.now(), state.at.tz);
@@ -130,7 +131,7 @@ function combo(boxId, listId, onPick, onClear) {
       li.textContent = L.placeLabel(p);
       ul.append(li);
     });
-    if (!opts.length) { const li = document.createElement('li'); li.className = 'none'; li.textContent = 'No town by that name. Try a bigger place nearby.'; ul.append(li); }
+    if (!opts.length) { const li = document.createElement('li'); li.className = 'none'; li.textContent = MORE || 'No town by that name. Try a bigger place nearby.'; ul.append(li); }
     ul.hidden = false;
     box.setAttribute('aria-expanded', 'true');
     if (active >= 0) { box.setAttribute('aria-activedescendant', `${listId}${active}`); $(`${listId}${active}`).scrollIntoView({ block: 'nearest' }); }
@@ -169,15 +170,35 @@ function wire() {
   });
 }
 
+// The first screen draws from data/seed.json (the biggest town in each zone plus the
+// fallbacks: ~15 KB gzipped, preloaded by index.html) instead of waiting on all of places.json (~770 KB, measured
+// 6.8 s before anything drew on Lighthouse's phone profile). The full list follows for
+// search. A link naming a town the seed lacks waits for the full list, so a shared link
+// never opens on the wrong town.
+const getJSON = (url) => fetch(url).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+function loadPlaces(wanted) {
+  // The full list starts only once the seed is in: on a slow link the two would split it.
+  const seed = getJSON('data/seed.json');
+  const full = seed.then(() => getJSON('data/places.json'), () => getJSON('data/places.json'));
+  full.catch(() => {});
+  return seed.then(
+    (seed) => (wanted.some((l) => l && !L.placeByLabel(seed.places, l)) ? full.then((d) => [d, null]) : [seed, full]),
+    () => full.then((d) => [d, null]));
+}
+// Swap the full list in when it lands: search then covers every town, and an open list redraws.
+function swapIn(rest, redraw) {
+  if (!rest) return;
+  MORE = 'Still loading the full list of towns…';
+  const reopen = () => { const a = document.activeElement; if (a && a.getAttribute('role') === 'combobox' && a.value.trim()) a.dispatchEvent(new Event('input')); };
+  rest.then((d) => { PLACES = d.places; MORE = null; reopen(); if (redraw) redraw(); },
+    () => { MORE = 'Could not load the full list of towns, so only big cities can be found. Reload to try again.'; reopen(); });
+}
+
 async function main() {
-  let doc;
-  try {
-    const r = await fetch('data/places.json');
-    if (!r.ok) throw new Error(r.status);
-    doc = await r.json();
-  } catch (e) { $('mZone').textContent = `Could not load the list of towns (${e.message}). Reload to try again.`; return; }
-  PLACES = doc.places; ZONES = doc.zones;
   const want = L.decodeState(location.search);
+  let doc, rest;
+  try { [doc, rest] = await loadPlaces([want.at, want.vs]); } catch (e) { $('mZone').textContent = `Could not load the list of towns (${e.message}). Reload to try again.`; return; }
+  PLACES = doc.places; ZONES = doc.zones;
   const find = (label) => { const p = label && L.placeByLabel(PLACES, label); return p ? L.toPlace(p, ZONES) : null; };
   let mine = null;
   try { mine = L.biggestIn(PLACES, ZONES, Intl.DateTimeFormat().resolvedOptions().timeZone); } catch { /* no zone: London */ }
@@ -188,5 +209,6 @@ async function main() {
   if (state.vs) { $('vs').value = state.vs.label; $('vsRow').hidden = false; $('addVs').hidden = true; }
   wire();
   draw();
+  swapIn(rest);
 }
 main();
