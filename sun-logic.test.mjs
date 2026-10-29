@@ -130,9 +130,9 @@ eq('Sydney: the longest day is in December', L.dayOfYear(2026, sy.longest)[1], 1
 eq('extremes: the first of a tie', L.extremes([1, 1, 3, 3, 2]), { longest: 2, shortest: 0 });
 
 // --- words -------------------------------------------------------------------------------
-eq('hours and minutes', [L.hm(53098e3), L.hm(0), L.hm(86400e3)], ['14 h 45 min', '0 h 00 min', '24 h 00 min']);
-eq('change since yesterday', [L.delta(151e3), L.delta(-64e3), L.delta(4e3), L.delta(0)], ['+2 min 31 s', '−1 min 4 s', '+4 s', '±0 s']);
-eq('change since yesterday at its edges', [L.delta(60e3), L.delta(59e3), L.delta(1e3), L.delta(-1e3), L.delta(1500e3)], ['+1 min 0 s', '+59 s', '+1 s', '−1 s', '+25 min 0 s']);
+eq('hours and minutes', [L.hm(53098e3), L.hm(0), L.hm(86400e3)], ['14\u00a0h 45\u00a0min', '0\u00a0h 00\u00a0min', '24\u00a0h 00\u00a0min']);
+eq('change since yesterday', [L.delta(151e3), L.delta(-64e3), L.delta(4e3), L.delta(0)], ['+2\u00a0min 31\u00a0s', '−1\u00a0min 4\u00a0s', '+4\u00a0s', '±0\u00a0s']);
+eq('change since yesterday at its edges', [L.delta(60e3), L.delta(59e3), L.delta(1e3), L.delta(-1e3), L.delta(1500e3)], ['+1\u00a0min 0\u00a0s', '+59\u00a0s', '+1\u00a0s', '−1\u00a0s', '+25\u00a0min 0\u00a0s']);
 eq('dates in words', L.dateWords([2026, 12, 21]), '21 December');
 
 // --- places and URL ------------------------------------------------------------------------

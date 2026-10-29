@@ -131,16 +131,20 @@ export function extremes(lengths) {
 
 // ---- words ------------------------------------------------------------------------------
 
+// A line may break anywhere but between a number and its unit (unit-wrap-sweep: on both a
+// 320px and a 390px phone, "53" ended one line and "min" began the next).
+export const NB = '\u00a0';
+
 export function hm(ms) {
   const min = Math.round(ms / 60e3);
-  return `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')} min`;
+  return `${Math.floor(min / 60)}${NB}h ${String(min % 60).padStart(2, '0')}${NB}min`;
 }
 
 // "+2 min 31 s" / "−1 min 4 s": the change since yesterday, which is seconds near a solstice.
 export function delta(ms) {
   const s = Math.round(ms / 1000), a = Math.abs(s);
   const sign = s > 0 ? '+' : s < 0 ? '−' : '±';
-  return a >= 60 ? `${sign}${Math.floor(a / 60)} min ${a % 60} s` : `${sign}${a} s`;
+  return a >= 60 ? `${sign}${Math.floor(a / 60)}${NB}min ${a % 60}${NB}s` : `${sign}${a}${NB}s`;
 }
 
 const timeFmt = new Map();
