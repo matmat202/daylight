@@ -129,6 +129,55 @@ export function extremes(lengths) {
   return { longest: hi, shortest: lo };
 }
 
+// The wall clock in zone `tz` at an instant rounded to the minute, as the page shows it:
+// minutes past local midnight, and the zone's offset from UTC in minutes.
+const wallFmt = new Map();
+function wall(ms, tz) {
+  if (!wallFmt.has(tz)) wallFmt.set(tz, new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }));
+  const at = Math.round(ms / 60e3) * 60e3;
+  const p = Object.fromEntries(wallFmt.get(tz).formatToParts(new Date(at)).map((x) => [x.type, Number(x.value)]));
+  return { minute: p.hour * 60 + p.minute, offset: (Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute) - at) / 60e3 };
+}
+
+// The earliest sunset and latest sunrise of a year on the town's clock. Neither is the
+// shortest day: across the 400 biggest towns within 60° (measured 2026-10-30) each falls
+// a median of 19 days from it, and where clocks change the latest sunrise is often the
+// last morning before they go back (Palo Alto: 7:33 on 31 October, against 7:23 in
+// January). The minute holds for about a week, so each is the run of days that share it:
+// { first, last, ms, clocks }, with first/last as [y, m, d]. clocks is { dir: 'back' |
+// 'forward', when: 'before' | 'after' } when the run ends the day before the clocks change
+// or starts the day after, else null.
+// A run that crosses New Year is cut at the year's edge. Null when the sun never sets.
+export function clockExtremes(year, place) {
+  const days = [];
+  for (let k = [year, 1, 1]; k[0] === year; k = addDays(k, 1)) {
+    const s = sunOn(k, place);
+    days.push({ k, s, off: wall(s.noon, place.tz).offset });
+  }
+  const pick = (key, better) => {
+    let best = -1, m = null;
+    days.forEach((d, i) => {
+      if (d.s.polar) return;
+      // Near the midnight sun a sunset can fall after midnight, which is late, not early;
+      // and a sunrise before midnight is early.
+      const m0 = wall(d.s[key], place.tz).minute;
+      d[key] = key === 'set' && m0 < 360 ? m0 + 1440 : key === 'rise' && m0 >= 1080 ? m0 - 1440 : m0;
+      if (best < 0 || better(d[key], m)) { best = i; m = d[key]; }
+    });
+    if (best < 0) return null;
+    // `best` is already the first day of a tie; widen forward only.
+    const a = best;
+    let b = best;
+    while (b < days.length - 1 && days[b + 1][key] === m) b++;
+    const turn = (i, j) => ({ dir: days[j].off > days[i].off ? 'forward' : 'back', when: i === b ? 'before' : 'after' });
+    const clocks = b + 1 < days.length && days[b + 1].off !== days[b].off ? turn(b, b + 1)
+      : a > 0 && days[a - 1].off !== days[a].off ? turn(a - 1, a) : null;
+    return { first: days[a].k, last: days[b].k, ms: days[a].s[key], clocks };
+  };
+  const set = pick('set', (v, m) => v < m), rise = pick('rise', (v, m) => v > m);
+  return set && rise ? { set, rise } : null;
+}
+
 // ---- words ------------------------------------------------------------------------------
 
 // A line may break anywhere but between a number and its unit (unit-wrap-sweep: on both a
@@ -159,6 +208,26 @@ export function clock(ms, tz, locale) {
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export function dateWords([y, m, d]) { return `${d} ${MONTHS[m - 1]}`; }
 export function dayOfYear(year, i) { return addDays([year, 1, 1], i); }
+
+// "3–9 December", "28 November – 2 December", "31 October".
+export function spanWords(a, b) {
+  if (same(a, b)) return dateWords(a);
+  return a[1] === b[1] ? `${a[2]}–${dateWords(b)}` : `${dateWords(a)} – ${dateWords(b)}`;
+}
+
+// "Earliest sunset: 4:50 PM, 3–9 December. Latest sunrise: 7:33 AM, 31 October, the last
+// morning before the clocks go back."
+export function clockExtremeWords(ex, t) {
+  if (!ex) return '';
+  const one = (label, e, noun) => {
+    const c = e.clocks;
+    const single = same(e.first, e.last);
+    const tail = !c ? '' : c.when === 'before' ? (single ? `, the last ${noun} before the clocks go ${c.dir}` : `, until the clocks go ${c.dir}`)
+      : (single ? `, the first ${noun} after the clocks go ${c.dir}` : `, from when the clocks go ${c.dir}`);
+    return `${label}: ${t(e.ms)}, ${spanWords(e.first, e.last)}${tail}.`;
+  };
+  return `${one('Earliest sunset', ex.set, 'evening')} ${one('Latest sunrise', ex.rise, 'morning')}`;
+}
 
 // ---- places: [name, admin1, country, lat, lon, pop, tzIndex], most populous first ------
 

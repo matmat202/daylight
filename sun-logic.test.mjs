@@ -130,6 +130,30 @@ eq('Sydney: the longest day is in December', L.dayOfYear(2026, sy.longest)[1], 1
 // Weeks of 24 h at Tromsø tie: the longest day is the first of them, and so is the shortest.
 eq('extremes: the first of a tie', L.extremes([1, 1, 3, 3, 2]), { longest: 2, shortest: 0 });
 
+// Earliest sunset and latest sunrise on the town's clock, against USNO rstt/oneday in the
+// town's offset (fetched 2026-10-30). The clock minute holds for days, and a run's end can
+// sit on a :30 edge, so each end may be a day off; the minute itself must match.
+const near = (a, b) => Math.abs(Date.UTC(a[0], a[1] - 1, a[2]) - Date.UTC(b[0], b[1] - 1, b[2])) <= 86400e3;
+const runIs = (name, e, tz, hhmm, first, last, clocks) => {
+  const got = e && L.clock(e.ms, tz, 'en-GB');
+  ok(name, e && got === hhmm && near(e.first, first) && near(e.last, last) && JSON.stringify(e.clocks) === JSON.stringify(clocks),
+    JSON.stringify(e && { got, first: e.first, last: e.last, clocks: e.clocks }));
+};
+const london = { lat: 51.5085, lon: -0.1257, tz: 'Europe/London' };
+const cpa = L.clockExtremes(2026, pa), cln = L.clockExtremes(2026, london), csy = L.clockExtremes(2026, CASES[4][2]), ctr = L.clockExtremes(2026, tromso);
+runIs('Palo Alto: earliest sunset 16:50, 3-9 December (USNO)', cpa.set, pa.tz, '16:50', [2026, 12, 3], [2026, 12, 9], null);
+runIs('Palo Alto: latest sunrise 07:33 on 31 October, the last morning before the clocks go back (USNO; January is 07:23)', cpa.rise, pa.tz, '7:33', [2026, 10, 31], [2026, 10, 31], { dir: 'back', when: 'before' });
+runIs('London: earliest sunset 15:51, 11-14 December (USNO)', cln.set, london.tz, '15:51', [2026, 12, 11], [2026, 12, 14], null);
+runIs('London: latest sunrise 08:06 in early January (USNO 1 and 4 January)', cln.rise, london.tz, '8:06', [2026, 1, 1], [2026, 1, 4], null);
+runIs('Sydney: latest sunrise 07:09 on 4 April, until the clocks go back on the 5th (USNO 06:10)', csy.rise, CASES[4][2].tz, '7:09', [2026, 4, 4], [2026, 4, 4], { dir: 'back', when: 'before' });
+runIs('Sydney: earliest sunset 16:53 in June (USNO 5 and 19 June)', csy.set, CASES[4][2].tz, '16:53', [2026, 6, 5], [2026, 6, 19], null);
+runIs('Tromsø: earliest sunset 11:42 on 27 November, before polar night (USNO); not a sunset after midnight in May', ctr.set, tromso.tz, '11:42', [2026, 11, 27], [2026, 11, 27], null);
+runIs('Tromsø: latest sunrise 11:29 on 15 January, the first after polar night (USNO)', ctr.rise, tromso.tz, '11:29', [2026, 1, 15], [2026, 1, 15], null);
+eq('a span of days in words', [L.spanWords([2026, 12, 3], [2026, 12, 9]), L.spanWords([2026, 11, 28], [2026, 12, 2]), L.spanWords([2026, 10, 31], [2026, 10, 31])], ['3–9 December', '28 November – 2 December', '31 October']);
+eq('earliest sunset and latest sunrise in words', L.clockExtremeWords(cpa, (ms) => L.clock(ms, pa.tz, 'en-GB')), 'Earliest sunset: 16:50, 3–9 December. Latest sunrise: 7:33, 31 October, the last morning before the clocks go back.');
+eq('a run of days before a clock change reads "until"', L.clockExtremeWords({ set: { ms: 0, first: [2026, 4, 3], last: [2026, 4, 4], clocks: { dir: 'back', when: 'before' } }, rise: { ms: 0, first: [2026, 3, 8], last: [2026, 3, 8], clocks: { dir: 'forward', when: 'after' } } }, () => 'T'),
+  'Earliest sunset: T, 3–4 April, until the clocks go back. Latest sunrise: T, 8 March, the first morning after the clocks go forward.');
+
 // --- words -------------------------------------------------------------------------------
 eq('hours and minutes', [L.hm(53098e3), L.hm(0), L.hm(86400e3)], ['14\u00a0h 45\u00a0min', '0\u00a0h 00\u00a0min', '24\u00a0h 00\u00a0min']);
 eq('change since yesterday', [L.delta(151e3), L.delta(-64e3), L.delta(4e3), L.delta(0)], ['+2\u00a0min 31\u00a0s', '−1\u00a0min 4\u00a0s', '+4\u00a0s', '±0\u00a0s']);

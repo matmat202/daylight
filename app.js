@@ -32,6 +32,13 @@ function yearOf(place, y) {
   return years.get(k);
 }
 
+const clocks = new Map();
+function clockOf(place, y) {
+  const k = `${place.label}|${y}`;
+  if (!clocks.has(k)) clocks.set(k, L.clockExtremes(y, place));
+  return clocks.get(k);
+}
+
 function card(prefix, place, date) {
   const s = L.sunOn(date, place);
   $(`${prefix}Name`).textContent = place.label;
@@ -55,7 +62,7 @@ function card(prefix, place, date) {
   const yl = yearOf(place, date[0]), ex = L.extremes(yl);
   const words = (i) => `${L.dateWords(L.dayOfYear(date[0], i))} (${L.hm(yl[i])})`;
   const change = s.polar && prev.polar === s.polar ? '' : `${L.delta(s.length - prev.length)} on the day before. `;
-  $(`${prefix}More`).textContent = `${change}Longest day in ${date[0]}: ${words(ex.longest)}. Shortest: ${words(ex.shortest)}.`;
+  $(`${prefix}More`).textContent = `${change}Longest day in ${date[0]}: ${words(ex.longest)}. Shortest: ${words(ex.shortest)}. ${L.clockExtremeWords(clockOf(place, date[0]), t)}`.trim();
   return s;
 }
 
