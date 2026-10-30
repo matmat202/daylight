@@ -4,6 +4,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 const L = await import(process.env.LOGIC ? pathToFileURL(process.env.LOGIC).href : './sun-logic.js');
+const Moon = await import(process.env.MOON ? pathToFileURL(process.env.MOON).href : './moon-logic.js');
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 
 let pass = 0, fail = 0;
@@ -158,6 +159,43 @@ eq('names are cut at 120', L.decodeState('?at=' + 'y'.repeat(130)).at.length, 12
 const st = { at: 'Palo Alto, California, United States', vs: 'Tromsø, Troms, Norway', date: [2026, 12, 21], today };
 eq('round trip', L.decodeState(L.encodeState(st)), { at: st.at, vs: st.vs, date: [2026, 12, 21] });
 eq('a bad date is dropped', [L.decodeState('?d=2026-02-30').date, L.decodeState('?d=junk').date], [null, null]);
+
+// --- the moon, against USNO ----------------------------------------------------------------
+// aa.usno.navy.mil/api/rstt/oneday, fetched 2026-10-30 with tz = the town's offset that day;
+// converted to UTC here. null = USNO lists no such event on that local date.
+const PA = { lat: 37.442, lon: -122.143, tz: 'America/Los_Angeles' };
+const MOON = [
+  // label, local date, place, rise UTC, set UTC, percent lit, phase words
+  ['Palo Alto 30 Oct', [2026, 10, 30], PA, '2026-10-31T05:18', '2026-10-30T19:49', 73, 'Waning gibbous'],
+  ['Palo Alto 2 Nov: no moonrise', [2026, 11, 2], PA, null, '2026-11-02T21:48', 39, 'Waning crescent'],
+  ['Palo Alto 3 Nov: rise just after midnight', [2026, 11, 3], PA, '2026-11-03T08:53', '2026-11-03T22:15', 29, 'Waning crescent'],
+  ['Sydney 30 Oct: no moonrise', [2026, 10, 30], { lat: -33.8679, lon: 151.2073, tz: 'Australia/Sydney' }, null, '2026-10-29T21:47', 80, 'Waning gibbous'],
+  ['Tromsø 15 Dec', [2026, 12, 15], { lat: 69.6496, lon: 18.956, tz: 'Europe/Oslo' }, '2026-12-15T11:14', '2026-12-15T20:21', 33, 'Waxing crescent'],
+  ['Singapore 9 Nov: new moon', [2026, 11, 9], { lat: 1.2897, lon: 103.8501, tz: 'Asia/Singapore' }, '2026-11-08T22:28', '2026-11-09T10:47', 0, 'New moon'],
+  ['Apia 27 Oct, UTC+13', [2026, 10, 27], { lat: -13.8333, lon: -171.7667, tz: 'Pacific/Apia' }, '2026-10-27T06:27', '2026-10-26T17:12', 99, 'Waning gibbous'],
+  ['Buenos Aires 15 Jul', [2026, 7, 15], { lat: -34.6037, lon: -58.3816, tz: 'America/Argentina/Buenos_Aires' }, '2026-07-15T12:04', '2026-07-15T22:37', 2, 'Waxing crescent'],
+];
+for (const [label, date, place, rise, set, pct, words] of MOON) {
+  const m = Moon.moonOn(date, place), w = Moon.phaseWords(date, place);
+  if (rise) atMin(`${label}: moonrise`, m.rise, rise); else eq(`${label}: no moonrise`, m.rise, null);
+  if (set) atMin(`${label}: moonset`, m.set, set); else eq(`${label}: no moonset`, m.set, null);
+  ok(`${label}: ${pct}% lit`, Math.abs(w.lit * 100 - pct) <= 1, (w.lit * 100).toFixed(1));
+  eq(`${label}: phase`, w.name, words);
+}
+const tro = Moon.moonOn([2026, 12, 22], { lat: 69.6496, lon: 18.956, tz: 'Europe/Oslo' });
+eq('Tromsø 22 Dec: the moon is up all day (USNO: continuously above the horizon)', [tro.rise, tro.set, tro.up], [null, null, 'all']);
+// aa.usno.navy.mil/api/moon/phases/date, fetched 2026-10-30 (UT, to the minute)
+const ph = Moon.phasesBetween(Date.UTC(2026, 9, 1), Date.UTC(2026, 10, 12));
+eq('principal phases Oct-Nov 2026: names', ph.map((p) => p.name), ['Last quarter', 'New moon', 'First quarter', 'Full moon', 'Last quarter', 'New moon']);
+['2026-10-03T13:25', '2026-10-10T15:50', '2026-10-18T16:12', '2026-10-26T04:12', '2026-11-01T20:28', '2026-11-09T07:02']
+  .forEach((iso, i) => atMin(`principal phase ${i + 1} at ${iso}`, ph[i] && ph[i].at, iso));
+const full = Moon.phaseWords([2026, 10, 25], PA);
+eq('Palo Alto 25 Oct: the full moon falls that evening, local time', [full.name, full.at && new Date(Math.round(full.at / 60e3) * 60e3).toISOString()], ['Full moon', '2026-10-26T04:12:00.000Z']);
+eq('local midnight across fall-back: 1 Nov is PDT, 2 Nov is PST', [Moon.midnight([2026, 11, 1], PA.tz), Moon.midnight([2026, 11, 2], PA.tz)].map((t) => new Date(t).toISOString()), ['2026-11-01T07:00:00.000Z', '2026-11-02T08:00:00.000Z']);
+// Sydney's clocks go forward at 02:00 on 4 Oct 2026: midnight that day is still +10, but
+// 00:00 UTC that day is already +11, so a single read of the offset is an hour out.
+eq('local midnight on Sydney\'s DST day: 4 Oct begins at +10', new Date(Moon.midnight([2026, 10, 4], 'Australia/Sydney')).toISOString(), '2026-10-03T14:00:00.000Z');
+eq('local midnight east of Greenwich: Sydney 30 Oct', new Date(Moon.midnight([2026, 10, 30], 'Australia/Sydney')).toISOString(), '2026-10-29T13:00:00.000Z');
 
 // --- the shipped places --------------------------------------------------------------------
 const f = here('./data/places.json');

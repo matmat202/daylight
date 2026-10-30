@@ -1,5 +1,6 @@
 // Daylight — the page. Logic lives in sun-logic.js; this file only reads and draws.
 import * as L from './sun-logic.js';
+import * as Moon from './moon-logic.js';
 
 const $ = (id) => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
@@ -49,12 +50,24 @@ function card(prefix, place, date) {
   $(`${prefix}Light`).textContent = lt.polar === 'day' ? 'Light enough to be outdoors without lamps all night.'
     : lt.polar === 'night' ? 'Dark all day: the sun stays more than 6° below the horizon.'
     : `First light ${t(lt.first)} · last light ${t(lt.last)} (civil twilight, sun 6° below the horizon)`;
+  $(`${prefix}Moon`).textContent = moonLine(date, place, t);
   const prev = L.sunOn(L.addDays(date, -1), place);
   const yl = yearOf(place, date[0]), ex = L.extremes(yl);
   const words = (i) => `${L.dateWords(L.dayOfYear(date[0], i))} (${L.hm(yl[i])})`;
   const change = s.polar && prev.polar === s.polar ? '' : `${L.delta(s.length - prev.length)} on the day before. `;
   $(`${prefix}More`).textContent = `${change}Longest day in ${date[0]}: ${words(ex.longest)}. Shortest: ${words(ex.shortest)}.`;
   return s;
+}
+
+// "Moonset 12:49 · moonrise 22:18 · waning gibbous, 73% lit", in the order they happen.
+function moonLine(date, place, t) {
+  const m = Moon.moonOn(date, place), w = Moon.phaseWords(date, place);
+  const ev = [['Moonrise', m.rise], ['Moonset', m.set]].filter((e) => e[1] != null).sort((a, b) => a[1] - b[1]);
+  const times = m.up === 'all' ? 'The moon is up all day' : m.up === 'none' ? 'The moon stays below the horizon all day'
+    : [...ev.map(([k, ms], i) => `${i ? k.toLowerCase() : k} ${t(ms)}`), m.rise == null ? 'no moonrise' : m.set == null ? 'no moonset' : null].filter(Boolean).join(' · ');
+  const lit = `${Math.round(w.lit * 100)}%${L.NB}lit`;
+  const phase = w.at ? `${w.name.toLowerCase()} at ${t(w.at)}` : `${w.name.toLowerCase()}, ${lit}`;
+  return `${times} · ${phase}`;
 }
 
 function drawChart() {
