@@ -132,7 +132,7 @@ export function extremes(lengths) {
 // The wall clock in zone `tz` at an instant rounded to the minute, as the page shows it:
 // minutes past local midnight, and the zone's offset from UTC in minutes.
 const wallFmt = new Map();
-function wall(ms, tz) {
+export function wall(ms, tz) {
   if (!wallFmt.has(tz)) wallFmt.set(tz, new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }));
   const at = Math.round(ms / 60e3) * 60e3;
   const p = Object.fromEntries(wallFmt.get(tz).formatToParts(new Date(at)).map((x) => [x.type, Number(x.value)]));
@@ -152,30 +152,35 @@ export function clockExtremes(year, place) {
   const days = [];
   for (let k = [year, 1, 1]; k[0] === year; k = addDays(k, 1)) {
     const s = sunOn(k, place);
-    days.push({ k, s, off: wall(s.noon, place.tz).offset });
+    const d = { k, polar: !!s.polar, off: wall(s.noon, place.tz).offset, ms: {}, min: {} };
+    if (!s.polar) for (const key of ['set', 'rise']) { d.ms[key] = s[key]; d.min[key] = wall(s[key], place.tz).minute; }
+    days.push(d);
   }
-  const pick = (key, better) => {
-    let best = -1, m = null;
-    days.forEach((d, i) => {
-      if (d.s.polar) return;
-      // Near the midnight sun a sunset can fall after midnight, which is late, not early;
-      // and a sunrise before midnight is early.
-      const m0 = wall(d.s[key], place.tz).minute;
-      d[key] = key === 'set' && m0 < 360 ? m0 + 1440 : key === 'rise' && m0 >= 1080 ? m0 - 1440 : m0;
-      if (best < 0 || better(d[key], m)) { best = i; m = d[key]; }
-    });
-    if (best < 0) return null;
-    // `best` is already the first day of a tie; widen forward only.
-    const a = best;
-    let b = best;
-    while (b < days.length - 1 && days[b + 1][key] === m) b++;
-    const turn = (i, j) => ({ dir: days[j].off > days[i].off ? 'forward' : 'back', when: i === b ? 'before' : 'after' });
-    const clocks = b + 1 < days.length && days[b + 1].off !== days[b].off ? turn(b, b + 1)
-      : a > 0 && days[a - 1].off !== days[a].off ? turn(a - 1, a) : null;
-    return { first: days[a].k, last: days[b].k, ms: days[a].s[key], clocks };
-  };
-  const set = pick('set', (v, m) => v < m), rise = pick('rise', (v, m) => v > m);
+  const set = clockRun(days, 'set', (v, m) => v < m), rise = clockRun(days, 'rise', (v, m) => v > m);
   return set && rise ? { set, rise } : null;
+}
+// The run of `days` (in order, one per calendar day: { k, polar, off, ms: { set, rise },
+// min: { set, rise } } with min the wall-clock minute) that holds the `better` minute for
+// `key`, as clockExtremes returns it. Split out so its edges can be tested on made-up days.
+export function clockRun(days, key, better) {
+  // Near the midnight sun a sunset can fall after midnight, which is late, not early;
+  // and a sunrise before midnight is early.
+  const at = days.map((d) => {
+    if (d.polar) return null;
+    const m0 = d.min[key];
+    return key === 'set' && m0 < 360 ? m0 + 1440 : key === 'rise' && m0 >= 1080 ? m0 - 1440 : m0;
+  });
+  let best = -1, m = null;
+  at.forEach((v, i) => { if (v !== null && (best < 0 || better(v, m))) { best = i; m = v; } });
+  if (best < 0) return null;
+  // `best` is already the first day of a tie; widen forward only.
+  const a = best;
+  let b = best;
+  while (b < days.length - 1 && at[b + 1] === m) b++;
+  const turn = (i, j) => ({ dir: days[j].off > days[i].off ? 'forward' : 'back', when: i === b ? 'before' : 'after' });
+  const clocks = b + 1 < days.length && days[b + 1].off !== days[b].off ? turn(b, b + 1)
+    : a > 0 && days[a - 1].off !== days[a].off ? turn(a - 1, a) : null;
+  return { first: days[a].k, last: days[b].k, ms: days[a].ms[key], clocks };
 }
 
 // ---- words ------------------------------------------------------------------------------

@@ -149,6 +149,30 @@ runIs('Sydney: latest sunrise 07:09 on 4 April, until the clocks go back on the 
 runIs('Sydney: earliest sunset 16:53 in June (USNO 5 and 19 June)', csy.set, CASES[4][2].tz, '16:53', [2026, 6, 5], [2026, 6, 19], null);
 runIs('Tromsø: earliest sunset 11:42 on 27 November, before polar night (USNO); not a sunset after midnight in May', ctr.set, tromso.tz, '11:42', [2026, 11, 27], [2026, 11, 27], null);
 runIs('Tromsø: latest sunrise 11:29 on 15 January, the first after polar night (USNO)', ctr.rise, tromso.tz, '11:29', [2026, 1, 15], [2026, 1, 15], null);
+// The run's edges on made-up days (mutwatch, 2026-11-03): the towns above cannot reach them.
+eq('London\'s run starts on 1 January itself, the year\'s first day', cln.rise.first, [2026, 1, 1]);
+{
+  const mk = (min, off = min.map(() => 0)) => min.map((m, i) => ({ k: [2026, 1, i + 1], polar: m === null, off: off[i], ms: { set: i, rise: i }, min: { set: m, rise: m } }));
+  const set = (min, off) => L.clockRun(mk(min, off), 'set', (v, m) => v < m);
+  const rise = (min, off) => L.clockRun(mk(min, off), 'rise', (v, m) => v > m);
+  eq('a sunset at 6:00 sharp is evening-early, not after midnight', set([360, 1000]).ms, 0);
+  eq('a sunset at 5:59 is after midnight, so late', set([359, 1000]).ms, 1);
+  eq('a sunrise at 18:00 is the evening before, so early', rise([1080, 500]).ms, 1);
+  eq('a sunrise at 17:59 is late', rise([1079, 500]).ms, 0);
+  eq('the first day can win', set([500, 600, 700]).ms, 0);
+  eq('a polar day is skipped, not a winner', set([null, 600, 500]).ms, 2);
+  eq('all polar, no run', set([null, null]), null);
+  eq('a run reaching the last day ends on it', [set([500, 400, 400]).first, set([500, 400, 400]).last, set([500, 400, 400]).clocks], [[2026, 1, 2], [2026, 1, 3], null]);
+  eq('clocks forward the day after the run', set([500, 400, 500], [0, 0, 60]).clocks, { dir: 'forward', when: 'before' });
+  eq('only the very next day counts', set([500, 400, 500, 500], [0, 0, 60, 0]).clocks, { dir: 'forward', when: 'before' });
+  eq('clocks back the day after', set([500, 400, 500, 500], [60, 60, 0, 0]).clocks, { dir: 'back', when: 'before' });
+  eq('clocks forward the day before the run', set([500, 400, 500, 500], [0, 60, 60, 60]).clocks, { dir: 'forward', when: 'after' });
+  eq('clocks back the day before', set([500, 500, 400, 500], [60, 60, 0, 0]).clocks, { dir: 'back', when: 'after' });
+  eq('no change on either side', set([500, 400, 500], [60, 60, 60]).clocks, null);
+}
+eq('wall: minutes past midnight', L.wall(Date.UTC(2026, 0, 1, 13, 5), 'UTC').minute, 785);
+eq('wall: UTC is offset 0 in every month', [0, 1, 2, 6, 7, 11].map((mo) => L.wall(Date.UTC(2026, mo, 1, 12), 'UTC').offset), [0, 0, 0, 0, 0, 0]);
+eq('wall: Palo Alto in July is -420', L.wall(Date.UTC(2026, 6, 1, 20), 'America/Los_Angeles').offset, -420);
 eq('a span of days in words', [L.spanWords([2026, 12, 3], [2026, 12, 9]), L.spanWords([2026, 11, 28], [2026, 12, 2]), L.spanWords([2026, 10, 31], [2026, 10, 31])], ['3–9 December', '28 November – 2 December', '31 October']);
 eq('earliest sunset and latest sunrise in words', L.clockExtremeWords(cpa, (ms) => L.clock(ms, pa.tz, 'en-GB')), 'Earliest sunset: 16:50, 3–9 December. Latest sunrise: 7:33, 31 October, the last morning before the clocks go back.');
 eq('a run of days before a clock change reads "until"', L.clockExtremeWords({ set: { ms: 0, first: [2026, 4, 3], last: [2026, 4, 4], clocks: { dir: 'back', when: 'before' } }, rise: { ms: 0, first: [2026, 3, 8], last: [2026, 3, 8], clocks: { dir: 'forward', when: 'after' } } }, () => 'T'),
