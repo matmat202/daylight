@@ -14,6 +14,12 @@ const today = () => L.ymdIn(Date.now(), state.at.tz);
 const theDate = () => state.date || today();
 const iso = (k) => k.map((x, i) => String(x).padStart(i ? 2 : 4, '0')).join('-');
 
+// The town last picked here, so a return visit without a link opens on it. Private browsing
+// or a full disk can refuse storage: then the page just starts from the time zone.
+const KEEP = 'daylight.at';
+const saved = () => { try { return localStorage.getItem(KEEP); } catch { return null; } };
+const keep = (label) => { try { localStorage.setItem(KEEP, label); } catch { /* not kept */ } };
+
 function sync() {
   history.replaceState(null, '', location.pathname + L.encodeState({
     at: state.at.label, vs: state.vs && state.vs.label, date: state.date, today: today(),
@@ -176,7 +182,7 @@ function combo(boxId, listId, onPick, onClear) {
 }
 
 function wire() {
-  const a = combo('at', 'atList', (p) => { state.at = p; $('at').value = p.label; $('nearNote').textContent = ''; draw(); });
+  const a = combo('at', 'atList', (p) => { state.at = p; $('at').value = p.label; $('nearNote').textContent = ''; keep(p.label); draw(); });
   a.box.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== a.box) { a.close(); a.box.value = state.at.label; } }, 150));
   const v = combo('vs', 'vsList', (p) => { state.vs = p; $('vs').value = p.label; draw(); }, () => { state.vs = null; draw(); });
   v.box.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== v.box) { v.close(); v.box.value = state.vs ? state.vs.label : ''; } }, 150));
@@ -205,6 +211,7 @@ function nearMe() {
     if (!r) return;
     state.at = L.toPlace(r[0], d.zones);
     $('at').value = state.at.label;
+    keep(state.at.label);
     draw();
     note.textContent = `Nearest town of 15,000+ people: ${kmWords(r[1])} from you${r[1] > 30 ? ', so your own sunrise and sunset can be a minute or more away from these' : ''}.`;
   }, (e) => {
@@ -240,13 +247,13 @@ function swapIn(rest, redraw) {
 async function main() {
   const want = L.decodeState(location.search);
   let doc, rest;
-  try { [doc, rest] = await loadPlaces([want.at, want.vs]); } catch (e) { $('mZone').textContent = `Could not load the list of towns (${e.message}). Reload to try again.`; return; }
+  try { [doc, rest] = await loadPlaces([want.at || saved(), want.vs]); } catch (e) { $('mZone').textContent = `Could not load the list of towns (${e.message}). Reload to try again.`; return; }
   PLACES = doc.places; ZONES = doc.zones;
   FULL = rest || Promise.resolve(doc);
   const find = (label) => { const p = label && L.placeByLabel(PLACES, label); return p ? L.toPlace(p, ZONES) : null; };
   let mine = null;
   try { mine = L.biggestIn(PLACES, ZONES, Intl.DateTimeFormat().resolvedOptions().timeZone); } catch { /* no zone: London */ }
-  state.at = find(want.at) || (mine && L.toPlace(mine, ZONES)) || find('London, England, United Kingdom');
+  state.at = find(want.at) || find(!want.at && saved()) || (mine && L.toPlace(mine, ZONES)) || find('London, England, United Kingdom');
   state.vs = find(want.vs);
   state.date = want.date;
   $('at').value = state.at.label;

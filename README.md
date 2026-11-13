@@ -7,7 +7,10 @@ on any day. Times are shown in the town's own time zone, daylight saving include
 Sydney shows Sydney's clock wherever you are reading from. The chart shows the whole year's
 day length, and tapping it jumps to that day. Add a second town to compare the two. Inside
 the polar circles the page says so: Tromsø gets the midnight sun in June and polar night in
-December. The link keeps the towns and the date.
+December. The link keeps the towns and the date. **Use my location** asks your browser where you are and picks the nearest
+listed town (by great-circle distance, so it works near the poles and across the date line),
+saying how far away it is; your position is never sent anywhere. Opened without a link, the page starts on the town you
+picked last on that device (kept in the browser), or else the biggest town in your time zone.
 
 ## How the times are worked out
 
