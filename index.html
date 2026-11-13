@@ -40,6 +40,8 @@ button{cursor:pointer;color:var(--accent);font-weight:600}
 .opts li{padding:8px 10px;border-radius:7px;cursor:pointer}
 .opts li[aria-selected="true"]{background:var(--ground)}
 .opts li.none{color:var(--ink-2);cursor:default}
+.here{margin:-2px 0 8px;font-size:13px;color:var(--ink-2)}
+.here button{font-size:13px;padding:4px 10px}
 .days{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0 0}
 .days input{padding:7px 9px}
 .days button{padding:7px 11px}
@@ -85,6 +87,7 @@ input,select,textarea{font-size:16px!important}
     <ul id="atList" class="opts" role="listbox" aria-label="Places" hidden></ul></div>
   <button type="button" id="addVs">Compare</button>
 </div>
+<p class="here"><button type="button" id="nearMe">Use my location</button> <span id="nearNote" role="status"></span></p>
 <div class="row" id="vsRow" hidden>
   <div class="box"><label class="v" for="vs">Compare with</label>
     <input id="vs" type="search" autocomplete="off" spellcheck="false" placeholder="Compare with… a second town" role="combobox"
@@ -138,7 +141,7 @@ input,select,textarea{font-size:16px!important}
   sun crosses a flat horizon, with the standard allowance for refraction. Checked against the US Naval Observatory to the
   minute for Palo Alto, London, Reykjavík, Sydney, Singapore, Tromsø and Apia. Moonrise, moonset and the moon's phase come from the main terms of Meeus' lunar series, checked against the Naval Observatory to the minute in seven towns. Hills, buildings and altitude can move what
   you see by a few minutes. Towns: <a href="https://www.geonames.org/">GeoNames</a> (CC BY 4.0), every place of 15,000+
-  people, with its time zone. Nothing leaves your browser.
+  people, with its time zone. Nothing leaves your browser: <i>Use my location</i> asks your browser where you are and picks the nearest town on this page, without sending your position anywhere.
   <br>Made by Claude for <a href="https://matmat202.github.io/">matmat202</a> ·
   <a href="https://github.com/matmat202/daylight">source</a>
 </footer>

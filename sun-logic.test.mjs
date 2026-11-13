@@ -200,6 +200,15 @@ eq('biggest in a zone', [L.biggestIn(pl, zones, 'Europe/Oslo')[0], L.biggestIn(p
 eq('to a place', L.toPlace(pl[3], zones), { label: 'Tromsø, Troms, Norway', lat: 69.649, lon: 18.955, tz: 'Europe/Oslo' });
 eq('labels skip an empty or repeated region', [L.placeLabel(['Monaco', '', 'Monaco']), L.placeLabel(['Singapore', 'Singapore', 'Singapore'])], ['Monaco, Monaco', 'Singapore, Singapore']);
 eq('the first zone has a biggest town', L.biggestIn(pl, zones, 'America/Chicago')[0], 'Springfield');
+// Nearest town: a flat map of degrees gets both of these wrong. At 70° N a degree of
+// longitude is 38 km, so the town 1° east is nearer than the one 0.5° (56 km) north; and a
+// point at 179.9° W is 22 km from a town at 179.9° E, not 359.8 degrees.
+const far = [['North', '', 'X', 70.5, 20, 1, 0], ['East', '', 'X', 70, 21, 1, 0], ['Date line', '', 'X', -16, 179.9, 1, 0], ['West', '', 'X', -16, 170, 1, 0]];
+eq('nearest: longitude shrinks toward the pole', L.nearest(far, 70, 20)[0][0], 'East');
+eq('nearest: across the date line', L.nearest(far, -16, -179.9)[0][0], 'Date line');
+ok('nearest: km at 70° N (1° of longitude = 38.1 km)', Math.abs(L.nearest(far, 70, 20)[1] - 38.03) < 0.1, L.nearest(far, 70, 20)[1]);
+ok('nearest: km across the date line (0.2° at 16° S = 21.4 km)', Math.abs(L.nearest(far, -16, -179.9)[1] - 21.37) < 0.1, L.nearest(far, -16, -179.9)[1]);
+eq('nearest: none in an empty list', L.nearest([], 0, 0), null);
 const today = [2026, 10, 26];
 eq('today is not in the URL', L.encodeState({ at: 'A', date: today, today }), '?at=A');
 eq('another day, same month or same day of the month, is', [L.encodeState({ date: [2026, 10, 27], today }), L.encodeState({ date: [2026, 11, 26], today })], ['?d=2026-10-27', '?d=2026-11-26']);
@@ -256,6 +265,9 @@ if (existsSync(f)) {
   eq('shipped: palo alto', L.placeLabel(L.matchPlaces(D.places, 'palo alto')[0]), 'Palo Alto, California, United States');
   eq('shipped: eight matches at most', L.matchPlaces(D.places, 'san').length, 8);
   eq('shipped: the biggest town in Los Angeles time', L.biggestIn(D.places, D.zones, 'America/Los_Angeles')[0], 'Los Angeles');
+  const near = (lat, lon) => { const r = L.nearest(D.places, lat, lon); return [L.placeLabel(r[0]), Math.round(r[1] * 10) / 10]; };
+  eq('shipped: nearest to Stanford\'s Main Quad', near(37.4275, -122.1697), ['Palo Alto, California, United States', 2.9]);
+  eq('shipped: nearest east of the date line in Fiji', near(-16.5, -179.95)[0], 'Labasa, Northern, Fiji');
 } else ok('shipped: data/places.json exists (run build.py)', false);
 
 console.log(`${fail ? 'FAILED' : 'ok'}: ${pass} passed, ${fail} failed`);

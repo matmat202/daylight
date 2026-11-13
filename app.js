@@ -6,6 +6,7 @@ const $ = (id) => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
 const DAY = 86400e3;
 let PLACES = [], ZONES = [];
+let FULL = null; // resolves to the full list of towns, which 'Use my location' searches
 let MORE = null; // while the page runs on seed.json: what a search with no match says
 const state = { at: null, vs: null, date: null }; // date null = today in the town's zone
 
@@ -175,12 +176,13 @@ function combo(boxId, listId, onPick, onClear) {
 }
 
 function wire() {
-  const a = combo('at', 'atList', (p) => { state.at = p; $('at').value = p.label; draw(); });
+  const a = combo('at', 'atList', (p) => { state.at = p; $('at').value = p.label; $('nearNote').textContent = ''; draw(); });
   a.box.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== a.box) { a.close(); a.box.value = state.at.label; } }, 150));
   const v = combo('vs', 'vsList', (p) => { state.vs = p; $('vs').value = p.label; draw(); }, () => { state.vs = null; draw(); });
   v.box.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== v.box) { v.close(); v.box.value = state.vs ? state.vs.label : ''; } }, 150));
   $('addVs').addEventListener('click', () => { $('vsRow').hidden = false; $('addVs').hidden = true; $('vs').focus(); });
   $('dropVs').addEventListener('click', () => { state.vs = null; $('vs').value = ''; $('vsRow').hidden = true; $('addVs').hidden = false; draw(); });
+  $('nearMe').addEventListener('click', nearMe);
   $('prev').addEventListener('click', () => setDate(L.addDays(theDate(), -1)));
   $('next').addEventListener('click', () => setDate(L.addDays(theDate(), 1)));
   $('today').addEventListener('click', () => setDate(null));
@@ -188,6 +190,27 @@ function wire() {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec($('date').value);
     if (m) setDate([+m[1], +m[2], +m[3]]);
   });
+}
+
+// The browser's position never leaves the page: it only picks the nearest town in the list.
+const kmWords = (km) => (km < 10 ? `${km.toFixed(1)}${L.NB}km` : `${Math.round(km).toLocaleString('en-US')}${L.NB}km`);
+function nearMe() {
+  const note = $('nearNote');
+  if (!navigator.geolocation) { note.textContent = 'This browser cannot share its location. Type your town instead.'; return; }
+  note.textContent = 'Finding you…';
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    let d;
+    try { d = await FULL; } catch { note.textContent = 'Could not load the full list of towns. Reload to try again.'; return; }
+    const r = L.nearest(d.places, pos.coords.latitude, pos.coords.longitude);
+    if (!r) return;
+    state.at = L.toPlace(r[0], d.zones);
+    $('at').value = state.at.label;
+    draw();
+    note.textContent = `Nearest town of 15,000+ people: ${kmWords(r[1])} from you${r[1] > 30 ? ', so your own sunrise and sunset can be a minute or more away from these' : ''}.`;
+  }, (e) => {
+    note.textContent = e && e.code === 1 ? 'Location is turned off for this page. Type your town instead.'
+      : 'Could not find your location. Type your town instead.';
+  }, { timeout: 15000, maximumAge: 600000 });
 }
 
 // The first screen draws from data/seed.json (the biggest town in each zone plus the
@@ -219,6 +242,7 @@ async function main() {
   let doc, rest;
   try { [doc, rest] = await loadPlaces([want.at, want.vs]); } catch (e) { $('mZone').textContent = `Could not load the list of towns (${e.message}). Reload to try again.`; return; }
   PLACES = doc.places; ZONES = doc.zones;
+  FULL = rest || Promise.resolve(doc);
   const find = (label) => { const p = label && L.placeByLabel(PLACES, label); return p ? L.toPlace(p, ZONES) : null; };
   let mine = null;
   try { mine = L.biggestIn(PLACES, ZONES, Intl.DateTimeFormat().resolvedOptions().timeZone); } catch { /* no zone: London */ }

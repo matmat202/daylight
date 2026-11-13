@@ -279,6 +279,19 @@ export function biggestIn(places, zones, tz) {
   return i < 0 ? null : places.find((p) => p[P.TZ] === i) || null;
 }
 
+// The listed town closest to a point, by great-circle distance: [place, km], or null for an
+// empty list. Longitude wraps, so a point just east of 180° finds a town just west of it.
+export function nearest(places, lat, lon) {
+  let best = null, bestH = Infinity;
+  const c = Math.cos(lat * RAD);
+  for (const p of places) {
+    const dLat = (p[P.LAT] - lat) * RAD / 2, dLon = (p[P.LON] - lon) * RAD / 2;
+    const h = Math.sin(dLat) ** 2 + c * Math.cos(p[P.LAT] * RAD) * Math.sin(dLon) ** 2;
+    if (h < bestH) { bestH = h; best = p; }
+  }
+  return best && [best, 2 * 6371.0088 * Math.asin(Math.min(1, Math.sqrt(bestH)))];
+}
+
 export const toPlace = (p, zones) => ({ label: placeLabel(p), lat: p[P.LAT], lon: p[P.LON], tz: zones[p[P.TZ]] });
 
 // ?at=Palo Alto, California, United States&vs=Tromsø, Troms, Norway&d=2026-12-21
