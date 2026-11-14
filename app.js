@@ -66,7 +66,7 @@ function card(prefix, place, date) {
     : `First light ${t(lt.first)} · last light ${t(lt.last)} (civil twilight, sun 6° below the horizon)`;
   $(`${prefix}Moon`).textContent = moonLine(date, place, t);
   $(`${prefix}Phases`).textContent = Moon.nextFullNew(date, place)
-    .map((p, i) => `${i ? '' : 'Next '}${p.name.toLowerCase()} ${L.dateWords(p.date)}${p.date[0] === date[0] ? '' : ` ${p.date[0]}`}`).join(' · ');
+    .map((p, i) => `${i ? '' : 'Next '}${p.name.toLowerCase()} ${L.dateWords(p.date).replace(' ', L.NB)}${p.date[0] === date[0] ? '' : `${L.NB}${p.date[0]}`}`).join(' · ');
   const prev = L.sunOn(L.addDays(date, -1), place);
   const yl = yearOf(place, date[0]), ex = L.extremes(yl);
   const words = (i) => `${L.dateWords(L.dayOfYear(date[0], i))} (${L.hm(yl[i])})`;
