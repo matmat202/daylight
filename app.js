@@ -64,6 +64,7 @@ function card(prefix, place, date) {
   $(`${prefix}Light`).textContent = lt.polar === 'day' ? 'Light enough to be outdoors without lamps all night.'
     : lt.polar === 'night' ? 'Dark all day: the sun stays more than 6° below the horizon.'
     : `First light ${t(lt.first)} · last light ${t(lt.last)} (civil twilight, sun 6° below the horizon)`;
+  nowrapped($(`${prefix}Gold`), goldLine(L.goldenOn(date, place), t));
   $(`${prefix}Moon`).textContent = moonLine(date, place, t);
   $(`${prefix}Phases`).textContent = Moon.nextFullNew(date, place)
     .map((p, i) => `${i ? '' : 'Next '}${p.name.toLowerCase()} ${L.dateWords(p.date).replace(' ', L.NB)}${p.date[0] === date[0] ? '' : `${L.NB}${p.date[0]}`}`).join(' · ');
@@ -73,6 +74,26 @@ function card(prefix, place, date) {
   const change = s.polar && prev.polar === s.polar ? '' : `${L.delta(s.length - prev.length)} on the day before. `;
   $(`${prefix}More`).textContent = `${change}Longest day in ${date[0]}: ${words(ex.longest)}. Shortest: ${words(ex.shortest)}. ${L.clockExtremeWords(clockOf(place, date[0]), t)}`.trim();
   return s;
+}
+
+// Text with \u0001…\u0002 runs that must not wrap. A word joiner did not stop Chromium
+// breaking "7:54 PM–8:52 PM" after its dash at 390 px; nowrap does.
+function nowrapped(el, s) {
+  el.replaceChildren(...s.split(/[\u0001\u0002]/).map((x, i) => {
+    if (!(i % 2)) return x;
+    const b = document.createElement('span'); b.className = 'nw'; b.textContent = x; return b;
+  }));
+}
+
+// "Golden hour 6:30–7:25 AM and 4:20–5:16 PM", or what the band does instead near the poles.
+function goldLine(g, t) {
+  const span = (a, b) => `\u0001${t(a)}–${t(b)}\u0002`;  // kept on one line by nowrapped()
+  return g.kind === 'two' ? `Golden hour ${span(...g.morning)} and ${span(...g.evening)} (sun from 4° below to 6° above the horizon)`
+    : g.kind === 'night' ? `Golden light until ${t(g.end)} and again from ${t(g.start)}: the sun stays low but never sinks 4° below the horizon`
+    : g.kind === 'day' ? `Golden light all day, ${span(g.start, g.end)}: the sun never climbs 6° above the horizon`
+    : g.kind === 'all' ? 'Golden light all day and night: the sun stays between 4° below and 6° above the horizon'
+    : g.kind === 'high' ? 'No golden hour: the sun stays more than 6° above the horizon all day'
+    : 'No golden hour: the sun stays more than 4° below the horizon all day';
 }
 
 // "Moonset 12:49 · moonrise 22:18 · waning gibbous, 73% lit", in the order they happen.

@@ -108,6 +108,64 @@ const anc = { lat: 61.218, lon: -149.9, tz: 'America/Anchorage' };
 eq('Anchorage, June: the sun sets and it never gets dark', [L.sunOn([2026, 6, 21], anc).polar, civ([2026, 6, 21], anc).polar, L.lightKind(L.sunOn([2026, 6, 21], anc), civ([2026, 6, 21], anc))], [null, 'day', 'white']);
 eq('Tromsø, June: midnight sun is not called a white night', L.lightKind(mid, civ([2026, 6, 21], tromso)), null);
 
+// --- golden hour, against USNO's sun altitude (centre 6° above to 4° below) ----------------
+// USNO has no golden-hour table, so each boundary is checked the other way round: our time,
+// to the minute, must be USNO's, and USNO's own altitude for that point (api/celnav, Hc, the
+// geometric altitude of the sun's centre, fetched 2026-11-14) must be on either side of the
+// band's edge one minute before and one minute after. So ours is within two minutes of
+// USNO's crossing, and the fixture can't simply agree with itself.
+const GOLD_TOWNS = {
+  'Palo Alto': [[2026, 11, 14], CASES[0][2], 'two'],
+  'London midsummer': [[2026, 6, 21], CASES[2][2], 'two'],
+  'Singapore': [[2026, 10, 26], CASES[5][2], 'two'],
+  'Sydney': [[2026, 10, 26], CASES[4][2], 'two'],
+  'Reykjavik midsummer': [[2026, 6, 21], CASES[3][2], 'night'],
+  'Tromso Jun 21': [[2026, 6, 21], tromso, 'night'],
+  'Tromso Jan 20': [[2026, 1, 20], tromso, 'day'],
+  'Tromso Dec 21': [[2026, 12, 21], tromso, 'day'],
+};
+const GOLD = [  // town, edge, USNO minute (UTC), edge altitude, USNO Hc a minute before, a minute after
+  ["Palo Alto", 'm0', '2026-11-14T14:30', -4, -4.204, -3.831],
+  ["Palo Alto", 'm1', '2026-11-14T15:25', 6, 5.746, 6.095],
+  ["Palo Alto", 'e0', '2026-11-15T00:20', 6, 6.223, 5.875],
+  ["Palo Alto", 'e1', '2026-11-15T01:16', -4, -3.882, -4.255],
+  ["London midsummer", 'm0', '2026-06-21T03:15', -4, -4.085, -3.871],
+  ["London midsummer", 'm1', '2026-06-21T04:37', 6, 5.822, 6.09],
+  ["London midsummer", 'e0', '2026-06-21T19:27', 6, 6.175, 5.908],
+  ["London midsummer", 'e1', '2026-06-21T20:50', -4, -3.91, -4.123],
+  ["Singapore", 'm0', '2026-10-25T22:33', -4, -4.336, -3.848],
+  ["Singapore", 'm1', '2026-10-25T23:14', 6, 5.673, 6.161],
+  ["Singapore", 'e0', '2026-10-26T10:23', 6, 6.202, 5.714],
+  ["Singapore", 'e1', '2026-10-26T11:04', -4, -3.801, -4.289],
+  ["Reykjavik midsummer", 'start', '2026-06-21T22:07', 6, 6.045, 5.89],
+  ["Reykjavik midsummer", 'end', '2026-06-21T04:52', 6, 5.904, 6.06],
+  ["Tromso Jan 20", 'start', '2026-01-20T08:17', -4, -4.076, -3.972],
+  ["Tromso Jan 20", 'end', '2026-01-20T13:34', -4, -3.96, -4.064],
+  ["Tromso Dec 21", 'start', '2026-12-21T09:30', -4, -4.012, -3.963],
+  ["Tromso Dec 21", 'end', '2026-12-21T11:55', -4, -3.977, -4.027],
+  ["Tromso Jun 21", 'start', '2026-06-21T20:35', 6, 6.049, 5.962],
+  ["Tromso Jun 21", 'end', '2026-06-21T00:57', 6, 5.964, 6.051],
+  ["Sydney", 'm0', '2026-10-25T18:45', -4, -4.296, -3.9],
+  ["Sydney", 'm1', '2026-10-25T19:35', 6, 5.758, 6.166],
+  ["Sydney", 'e0', '2026-10-26T07:44', 6, 6.133, 5.726],
+  ["Sydney", 'e1', '2026-10-26T08:33', -4, -3.712, -4.107],
+];
+const goldEdge = (g, k) => ({ m0: g.morning?.[0], m1: g.morning?.[1], e0: g.evening?.[0], e1: g.evening?.[1], start: g.start, end: g.end })[k];
+for (const [town, [date, place, kind]] of Object.entries(GOLD_TOWNS)) eq(`golden hour, ${town}: ${kind}`, L.goldenOn(date, place).kind, kind);
+for (const [town, k, iso, alt, before, after] of GOLD) {
+  const [date, place] = GOLD_TOWNS[town];
+  ok(`golden hour, ${town} ${k}: USNO crosses ${alt}° in that minute`, Math.min(before, after) <= alt && alt <= Math.max(before, after), `${before} ${after}`);
+  atMin(`golden hour, ${town} ${k}`, goldEdge(L.goldenOn(date, place), k), iso);
+}
+ok('golden hour: all 24 USNO edges checked', GOLD.length === 24, GOLD.length);
+// Longyearbyen (78.2° N): the sun stays above 6° all through 21 June and below -4° all
+// through 21 December, as declination ±23.4° says it must (min 11.7°, max -11.7°).
+const lyr = { lat: 78.2232, lon: 15.6267, tz: 'Arctic/Longyearbyen' };
+eq('golden hour, Longyearbyen June: never that low', L.goldenOn([2026, 6, 21], lyr), { kind: 'high' });
+eq('golden hour, Longyearbyen December: never that high', L.goldenOn([2026, 12, 21], lyr), { kind: 'dark' });
+// At the pole the sun circles at its declination, about 0° on 20 March, so it stays in the band all day.
+eq('golden hour, the North Pole at the equinox: all day', L.goldenOn([2026, 3, 20], { lat: 89.99, lon: 0, tz: 'UTC' }), { kind: 'all' });
+
 // --- clocks in the town's own zone ------------------------------------------------------
 const lon = L.sunOn([2026, 3, 29], CASES[2][2]);
 eq('London sunrise in BST, rounded to the minute', L.clock(lon.rise, 'Europe/London', 'en-US'), '6:43 AM');

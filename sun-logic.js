@@ -115,6 +115,24 @@ export function lightKind(sun, light) {
   return null;
 }
 
+// Golden hour: the sun's centre between 6° above and 4° below the horizon, the low warm
+// light photographers wait for. Geometric altitude, no refraction: the band is a convention,
+// not an observation. `kind` is 'two' (a morning and an evening band), 'night' (the sun
+// never sinks 4° below, so the evening band runs on through the night: `end` is when this
+// morning's golden light, carried over from last night, ends; `start` is when tonight's
+// begins), 'day' (the sun never climbs past
+// 6°, so the whole lit day is golden), 'all' (both), 'high' (it never gets that low) or
+// 'dark' (it never gets that high).
+export const GOLD_HIGH = 84, GOLD_LOW = 94;
+export function goldenOn(date, place) {
+  const hi = sunOn(date, place, GOLD_HIGH), lo = sunOn(date, place, GOLD_LOW);
+  if (hi.polar === 'day') return { kind: 'high' };
+  if (lo.polar === 'night') return { kind: 'dark' };
+  if (hi.polar === 'night') return lo.polar === 'day' ? { kind: 'all' } : { kind: 'day', start: lo.rise, end: lo.set };
+  if (lo.polar === 'day') return { kind: 'night', start: hi.set, end: hi.rise };
+  return { kind: 'two', morning: [lo.rise, hi.rise], evening: [hi.set, lo.set] };
+}
+
 // Day length for every day of a year in the town's calendar, in ms.
 export function yearLengths(year, place) {
   const out = [];
