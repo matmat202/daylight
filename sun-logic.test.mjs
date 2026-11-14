@@ -248,6 +248,17 @@ eq('principal phases Oct-Nov 2026: names', ph.map((p) => p.name), ['Last quarter
   .forEach((iso, i) => atMin(`principal phase ${i + 1} at ${iso}`, ph[i] && ph[i].at, iso));
 const full = Moon.phaseWords([2026, 10, 25], PA);
 eq('Palo Alto 25 Oct: the full moon falls that evening, local time', [full.name, full.at && new Date(Math.round(full.at / 60e3) * 60e3).toISOString()], ['Full moon', '2026-10-26T04:12:00.000Z']);
+// aa.usno.navy.mil/api/moon/phases/date?date=2026-11-13, fetched 2026-11-14 (UT): full
+// 24 Nov 14:53, new 9 Dec 00:52, full 24 Dec 01:28, new 7 Jan 20:24, full 22 Jan 12:17.
+const nx = (label, date, place, want) => {
+  const got = Moon.nextFullNew(date, place);
+  eq(`${label}: names and local dates`, got.map((p) => [p.name, p.date]), want.map((w) => [w[0], w[1]]));
+  want.forEach((w, i) => { if (w[2]) atMin(`${label}: ${w[0]} at ${w[2]}`, got[i] && got[i].at, w[2]); });
+};
+nx('next full/new from Palo Alto 13 Nov: the new moon is still 8 Dec there', [2026, 11, 13], PA, [['Full moon', [2026, 11, 24], '2026-11-24T14:53'], ['New moon', [2026, 12, 8], '2026-12-09T00:52']]);
+nx('next full/new from Sydney 13 Nov: the full moon is a day later than UT says', [2026, 11, 13], { tz: 'Australia/Sydney' }, [['Full moon', [2026, 11, 25]], ['New moon', [2026, 12, 9]]]);
+nx('next full/new from Palo Alto 23 Dec: that evening\'s full moon is today, not next', [2026, 12, 23], PA, [['New moon', [2027, 1, 7], '2027-01-07T20:24'], ['Full moon', [2027, 1, 22], '2027-01-22T12:17']]);
+nx('next full/new from London 24 Nov, the full moon\'s own day: the next is 24 Dec', [2026, 11, 24], { tz: 'Europe/London' }, [['New moon', [2026, 12, 9]], ['Full moon', [2026, 12, 24], '2026-12-24T01:28']]);
 eq('local midnight across fall-back: 1 Nov is PDT, 2 Nov is PST', [Moon.midnight([2026, 11, 1], PA.tz), Moon.midnight([2026, 11, 2], PA.tz)].map((t) => new Date(t).toISOString()), ['2026-11-01T07:00:00.000Z', '2026-11-02T08:00:00.000Z']);
 // Sydney's clocks go forward at 02:00 on 4 Oct 2026: midnight that day is still +10, but
 // 00:00 UTC that day is already +11, so a single read of the offset is an hour out.

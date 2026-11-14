@@ -173,3 +173,18 @@ export function phaseWords(date, place) {
   const name = p.age < 90 || p.age > 270 ? `${wax ? 'Waxing' : 'Waning'} crescent` : `${wax ? 'Waxing' : 'Waning'} gibbous`;
   return { name, at: null, lit: p.lit };
 }
+
+// The next full moon and the next new moon after a local date, soonest first (as
+// phasesBetween finds them):
+// [{ name, at, date }], `date` the town's own calendar date of `at` (the new moon of
+// 9 Dec 2026, 00:52 UT, is still 8 Dec in Palo Alto). A lunation is under 30 days.
+export function nextFullNew(date, place) {
+  const from = midnight(nextDay(date), place.tz), seen = new Map();
+  for (const p of phasesBetween(from, from + 32 * DAY)) {
+    if ((p.name === 'Full moon' || p.name === 'New moon') && !seen.has(p.name)) seen.set(p.name, p);
+  }
+  return [...seen.values()].map((p) => {
+    const w = new Date(p.at + offsetAt(p.at, place.tz));
+    return { ...p, date: [w.getUTCFullYear(), w.getUTCMonth() + 1, w.getUTCDate()] };
+  });
+}

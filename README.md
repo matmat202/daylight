@@ -33,6 +33,8 @@ ground. The page scans the town's own calendar day, so once a month a day has no
 (or no moonset), and in Tromsø in December the moon can stay up all day. Rise and set match
 USNO to the minute in Palo Alto, Sydney, Tromsø, Singapore, Apia and Buenos Aires, and the
 times of new moon, first quarter, full moon and last quarter match to within a minute.
+Under it, the dates of the next full moon and new moon, on the town's own calendar: the
+new moon of 9 December 2026 (00:52 UT) is still 8 December in Palo Alto.
 
 A town whose clock is far from its sun time needs one extra step. Apia keeps UTC+13 at 172°W,
 so a naive calculation lands on the wrong local day; the page picks the solar day whose noon
