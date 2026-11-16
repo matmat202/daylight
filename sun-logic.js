@@ -124,8 +124,19 @@ export function lightKind(sun, light) {
 // 6°, so the whole lit day is golden), 'all' (both), 'high' (it never gets that low) or
 // 'dark' (it never gets that high).
 export const GOLD_HIGH = 84, GOLD_LOW = 94;
-export function goldenOn(date, place) {
-  const hi = sunOn(date, place, GOLD_HIGH), lo = sunOn(date, place, GOLD_LOW);
+export function goldenOn(date, place) { return bandOn(date, place, GOLD_HIGH, GOLD_LOW); }
+
+// Blue hour: the sun's centre between 4° and 6° below the horizon, the deep-blue band right
+// after golden hour ends in the evening (and before it starts in the morning). Same kinds as
+// goldenOn, read the same way: 'night' means the sun never sinks 6° below, so the evening's
+// blue runs on until morning; 'day' means it never climbs above 4° below, so the only blue
+// is around noon; 'high' and 'dark' mean there is none.
+export const BLUE_HIGH = 94, BLUE_LOW = 96;
+export function blueOn(date, place) { return bandOn(date, place, BLUE_HIGH, BLUE_LOW); }
+
+// When the sun's centre is between zenith angles `high` and `low` (degrees, high < low).
+function bandOn(date, place, high, low) {
+  const hi = sunOn(date, place, high), lo = sunOn(date, place, low);
   if (hi.polar === 'day') return { kind: 'high' };
   if (lo.polar === 'night') return { kind: 'dark' };
   if (hi.polar === 'night') return lo.polar === 'day' ? { kind: 'all' } : { kind: 'day', start: lo.rise, end: lo.set };

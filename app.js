@@ -64,7 +64,7 @@ function card(prefix, place, date) {
   $(`${prefix}Light`).textContent = lt.polar === 'day' ? 'Light enough to be outdoors without lamps all night.'
     : lt.polar === 'night' ? 'Dark all day: the sun stays more than 6° below the horizon.'
     : `First light ${t(lt.first)} · last light ${t(lt.last)} (civil twilight, sun 6° below the horizon)`;
-  nowrapped($(`${prefix}Gold`), goldLine(L.goldenOn(date, place), t));
+  nowrapped($(`${prefix}Gold`), goldLine(L.goldenOn(date, place), t) + blueLine(L.blueOn(date, place), t));
   $(`${prefix}Moon`).textContent = moonLine(date, place, t);
   $(`${prefix}Phases`).textContent = Moon.nextFullNew(date, place)
     .map((p, i) => `${i ? '' : 'Next '}${p.name.toLowerCase()} ${L.dateWords(p.date).replace(' ', L.NB)}${p.date[0] === date[0] ? '' : `${L.NB}${p.date[0]}`}`).join(' · ');
@@ -94,6 +94,16 @@ function goldLine(g, t) {
     : g.kind === 'all' ? 'Golden light all day and night: the sun stays between 4° below and 6° above the horizon'
     : g.kind === 'high' ? 'No golden hour: the sun stays more than 6° above the horizon all day'
     : 'No golden hour: the sun stays more than 4° below the horizon all day';
+}
+
+// " · blue hour 5:52–6:03 AM and 6:16–6:26 PM", appended to the golden line; nothing when there is none.
+function blueLine(b, t) {
+  const span = (a, z) => `\u0001${t(a)}–${t(z)}\u0002`;
+  return b.kind === 'two' ? ` · blue hour ${span(...b.morning)} and ${span(...b.evening)} (4° to 6° below)`
+    : b.kind === 'night' ? ` · blue light until ${t(b.end)} and again from ${t(b.start)}: the sun never sinks 6° below`
+    : b.kind === 'day' ? ` · blue hour ${span(b.start, b.end)}, all the light the day gets above 6° below`
+    : b.kind === 'all' ? ' · blue light all day and night'
+    : '';
 }
 
 // "Moonset 12:49 · moonrise 22:18 · waning gibbous, 73% lit", in the order they happen.

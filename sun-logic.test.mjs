@@ -164,6 +164,47 @@ const lyr = { lat: 78.2232, lon: 15.6267, tz: 'Arctic/Longyearbyen' };
 eq('golden hour, Longyearbyen June: never that low', L.goldenOn([2026, 6, 21], lyr), { kind: 'high' });
 eq('golden hour, Longyearbyen December: never that high', L.goldenOn([2026, 12, 21], lyr), { kind: 'dark' });
 // At the pole the sun circles at its declination, about 0° on 20 March, so it stays in the band all day.
+// --- blue hour: the sun's centre 4° to 6° below the horizon -----------------------------
+// Its -4° edges are golden hour's (checked above); the -6° edges and the polar kinds are
+// checked against USNO celnav Hc a minute either side, fetched 2026-11-16.
+const BLUE_TOWNS = { ...GOLD_TOWNS,
+  'Tampere midsummer': [[2026, 6, 21], { lat: 61.4978, lon: 23.761, tz: 'Europe/Helsinki' }],
+  'Hammerfest Dec 21': [[2026, 12, 21], { lat: 70.6634, lon: 23.6821, tz: 'Europe/Oslo' }] };
+const BLUE_KINDS = { 'Palo Alto': 'two', 'London midsummer': 'two', 'Singapore': 'two', 'Sydney': 'two',
+  'Reykjavik midsummer': 'high', 'Tromso Jun 21': 'high', 'Tromso Jan 20': 'two', 'Tromso Dec 21': 'two',
+  'Tampere midsummer': 'night', 'Hammerfest Dec 21': 'day' };
+for (const [town, kind] of Object.entries(BLUE_KINDS)) eq(`blue hour, ${town}: ${kind}`, L.blueOn(...BLUE_TOWNS[town]).kind, kind);
+const BLUE = [  // town, edge, USNO minute (UTC), edge altitude, USNO Hc a minute before, a minute after
+  ["Palo Alto", 'm0', '2026-11-14T14:19', -6, -6.265557, -5.889266],
+  ["Palo Alto", 'e1', '2026-11-15T01:26', -6, -5.753211, -6.129371],
+  ["London midsummer", 'm0', '2026-06-21T02:55', -6, -6.126228, -5.92975],
+  ["London midsummer", 'e1', '2026-06-21T21:09', -6, -5.867077, -6.064122],
+  ["Singapore", 'm0', '2026-10-25T22:25', -6, -6.289887, -5.801415],
+  ["Singapore", 'e1', '2026-10-26T11:12', -6, -5.753045, -6.241173],
+  ["Sydney", 'm0', '2026-10-25T18:35', -6, -6.264135, -5.871801],
+  ["Sydney", 'e1', '2026-10-26T08:44', -6, -5.875553, -6.266707],
+  ["Tromso Jan 20", 'm0', '2026-01-20T07:42', -6, -6.077808, -5.95498],
+  ["Tromso Jan 20", 'e1', '2026-01-20T14:09', -6, -5.93945, -6.062053],
+  ["Tromso Dec 21", 'm0', '2026-12-21T08:31', -6, -6.052419, -5.965574],
+  ["Tromso Dec 21", 'e1', '2026-12-21T12:53', -6, -5.947693, -6.034292],
+  ["Tampere midsummer", 'start', '2026-06-21T21:20', -4, -3.970275, -4.033385],
+  ["Tampere midsummer", 'end', '2026-06-20T23:34', -4, -4.017819, -3.954272],
+  ["Hammerfest Dec 21", 'start', '2026-12-21T08:35', -6, -6.048609, -5.979137],
+  ["Hammerfest Dec 21", 'end', '2026-12-21T12:11', -6, -5.958788, -6.027906],
+];
+for (const [town, k, iso, alt, before, after] of BLUE) {
+  ok(`blue hour, ${town} ${k}: USNO crosses ${alt}° in that minute`, Math.min(before, after) <= alt && alt <= Math.max(before, after), `${before} ${after}`);
+  atMin(`blue hour, ${town} ${k}`, goldEdge(L.blueOn(...BLUE_TOWNS[town]), k), iso);
+}
+ok('blue hour: all 16 USNO edges checked', BLUE.length === 16, BLUE.length);
+// Where both bands come in pairs, blue hour meets golden hour at -4° exactly: the evening's
+// golden ends when its blue begins, and the morning's blue ends when golden begins.
+for (const town of ['Palo Alto', 'London midsummer', 'Singapore', 'Sydney']) {
+  const b = L.blueOn(...GOLD_TOWNS[town]), g = L.goldenOn(...GOLD_TOWNS[town]);
+  eq(`blue meets golden at -4°, ${town}`, [b.morning[1], b.evening[0]], [g.morning[0], g.evening[1]]);
+}
+eq('blue hour, Longyearbyen December: never that high', L.blueOn([2026, 12, 21], lyr), { kind: 'dark' });
+
 eq('golden hour, the North Pole at the equinox: all day', L.goldenOn([2026, 3, 20], { lat: 89.99, lon: 0, tz: 'UTC' }), { kind: 'all' });
 
 // --- clocks in the town's own zone ------------------------------------------------------
