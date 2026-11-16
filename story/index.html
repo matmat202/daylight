@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Noon comes early · Daylight, a story</title>
+<meta name="description" content="A story from Daylight: in 31,807 towns holding 3.9 billion people, the sun is highest after 12:00 on the town's own clock for three people in four, at 12:22 for the middle one. Summer time adds only eight minutes of that, and it is not just China: the zones themselves are set ahead of the sun. Spain is the far end, at 13:46; Japan is one of the few places where the sun beats the clock.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="plot" aria-hidden="true"></div>
+<p id="err" role="alert"></p>
+<main>
+
+<section class="step" data-step="all"><div>
+  <p class="kicker">Daylight · a story</p>
+  <h1>Noon comes early</h1>
+  <p>Noon is meant to be when the sun is highest. By the clock on the wall, is it?</p>
+  <p>I took every town <a href="../">Daylight</a> knows, <b data-fact="n_towns"></b> of
+  them with <b data-fact="billion:all"></b> people, and for each worked out when its sun is
+  highest on every day of <b data-fact="year"></b>, by the town’s own clock, then took the
+  year’s mean. The grey is the people, stacked by that time; the red dot is the middle
+  person.</p>
+  <p>For <b data-fact="after:all"></b> of them, <span class="w">three people in four</span>,
+  the sun is highest after 12:00. The middle person’s sun peaks at
+  <b data-fact="clock:all"></b>. Only <b data-fact="near:all"></b> live within a quarter
+  of an hour of it, and <b data-fact="hour:all"></b> wait more than an hour.</p>
+  <p class="small"><span class="k up">the middle person</span> <span class="k down">people, by when their sun is highest</span> · Scroll ↓</p>
+</div></section>
+
+<section class="step" data-step="causes"><div>
+  <p class="kicker">Chapter 1 · Two easy answers</p>
+  <h2>Not summer time, and not China</h2>
+  <p>Summer time moves the clock an hour ahead of the sun for part of the year. Take it
+  away, every clock held at its winter setting all year, and the sun still peaks after
+  noon for <b data-fact="after:std"></b>; the middle moves only to
+  <b data-fact="clock:std"></b>. <span class="w">Summer time is
+  <b data-fact="summer:all"></b> of it.</span></p>
+  <p>China keeps one clock across five thousand kilometres, so it might be China. Leave
+  every Chinese town out and the share is <b data-fact="after:exchina"></b>:
+  <span class="w">the same, give or take a point</span>.</p>
+  <p>What is left is the zones themselves. Even with no summer time,
+  <b data-fact="half:std"></b> of people have a clock half an hour or more ahead of their
+  sun, and <b data-fact="early:std"></b> one half an hour behind it. <span class="w">When
+  a clock is set wrong, it is set early.</span></p>
+</div></section>
+
+<section class="step" data-step="countries"><div>
+  <p class="kicker">Chapter 2 · Country by country</p>
+  <h2>Spain at one end, Japan at the other</h2>
+  <p>Spain keeps central Europe’s clock, though it is west of London. In
+  <b data-fact="hour:spain"></b> of its towns the sun peaks more than an hour late, and the
+  middle Spaniard’s at <b data-fact="clock:spain"></b>. In the United States
+  <span class="w">every town’s</span> sun is late; the middle is at
+  <b data-fact="clock:us"></b>.</p>
+  <p>China’s one zone puts the sun’s peak anywhere from <b data-fact="earliest:china"></b>
+  in the far north-east to <b data-fact="latest:china"></b> in western Tibet, a spread of
+  <b data-fact="span:china"></b>. India, with one zone too, spans
+  <b data-fact="span:india"></b>.</p>
+  <p>Brazil is close to fair: middle <b data-fact="clock:brazil"></b>. Japan is where
+  <span class="w">the sun beats the clock</span> by the most: of the countries with
+  20 million people in these towns, its middle is the earliest, at
+  <b data-fact="clock:japan"></b>, and for <b data-fact="before:japan"></b> of its people
+  the sun is highest before noon.</p>
+</div></section>
+
+<section class="step" data-step="all"><div>
+  <p class="kicker">Epilogue · Reading your own town</p>
+  <h2>Lunch at noon is lunch before the sun</h2>
+  <p>On <a href="../">Daylight</a>, “sun highest” is this number for one town on one day.
+  It wanders through the year by up to a quarter of an hour either way (the sun runs fast
+  in autumn and slow in late winter), which is why this story takes the year’s mean.</p>
+  <p class="small">Data: the site’s own <a href="https://www.geonames.org/">GeoNames</a>
+  <code>cities15000</code> towns (CC BY 4.0), <b data-fact="n_towns"></b> of them, each
+  weighted by its GeoNames population, and each town’s zone from the IANA tz database. The
+  towns are not everyone: villages and towns under 15,000 people are left out. GeoNames
+  puts Ürümqi and Kashgar on Xinjiang’s own clock, two hours behind Beijing’s, which many
+  there keep; on Beijing time, the official one, their sun would be two hours later
+  still. The sun’s position is the site’s own (NOAA’s equations). “No summer time” holds
+  each zone at its smallest offset of the year. The program is
+  <a href="https://github.com/matmat202/daylight/blob/main/story/build_story.py">in the
+  repository</a>.</p>
+</div></section>
+
+</main>
+<script type="module" src="story.js"></script>
+</body>
+</html>
