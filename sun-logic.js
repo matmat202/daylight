@@ -302,6 +302,18 @@ export function placeByLabel(places, label) {
   return places.find((p) => fold(placeLabel(p)) === f) || null;
 }
 
+// A link written by hand ("?at=london", "?at=Palo Alto"): the full label first, else the
+// biggest town whose whole name is the part before the first comma (later parts narrow the
+// region or country, as in the search box). A name that only starts a town's name is not
+// enough: "?at=Lon" opening London would hide the typo.
+export function placeForLink(places, label) {
+  if (!label) return null;
+  const p = placeByLabel(places, label);
+  if (p) return p;
+  const m = matchPlaces(places, label, 1)[0];
+  return m && fold(m[P.NAME]) === fold(String(label).split(',')[0]) ? m : null;
+}
+
 // The biggest town in a time zone: where the page starts when nothing else says.
 export function biggestIn(places, zones, tz) {
   const i = zones.indexOf(tz);

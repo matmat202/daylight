@@ -378,6 +378,17 @@ if (existsSync(f)) {
   const near = (lat, lon) => { const r = L.nearest(D.places, lat, lon); return [L.placeLabel(r[0]), Math.round(r[1] * 10) / 10]; };
   eq('shipped: nearest to Stanford\'s Main Quad', near(37.4275, -122.1697), ['Palo Alto, California, United States', 2.9]);
   eq('shipped: nearest east of the date line in Fiji', near(-16.5, -179.95)[0], 'Labasa, Northern, Fiji');
+  // Links typed by hand: the whole name finds the biggest such town; a fragment finds nothing.
+  const link = (q) => { const p = L.placeForLink(D.places, q); return p && L.placeLabel(p); };
+  eq('link: the full label', link('Apia, Tuamasaga, Samoa'), 'Apia, Tuamasaga, Samoa');
+  eq('link: a name alone', link('Palo Alto'), 'Palo Alto, California, United States');
+  eq('link: the biggest of a shared name', link('london'), 'London, England, United Kingdom');
+  eq('link: folded', link('tromso'), 'Tromsø, Troms, Norway');
+  eq('link: narrowed by region', link('London, Ontario'), 'London, Ontario, Canada');
+  eq('link: narrowed by country', link('Paris, united'), 'Paris, Texas, United States');
+  eq('link: the start of a name is not a town', link('Lon'), null);
+  eq('link: no such town', link('Qwzxville'), null);
+  eq('link: empty', link(null), null);
 } else ok('shipped: data/places.json exists (run build.py)', false);
 
 console.log(`${fail ? 'FAILED' : 'ok'}: ${pass} passed, ${fail} failed`);

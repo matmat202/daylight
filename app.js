@@ -283,11 +283,16 @@ async function main() {
   try { [doc, rest] = await loadPlaces([want.at || saved(), want.vs]); } catch (e) { $('mZone').textContent = `Could not load the list of towns (${e.message}). Reload to try again.`; return; }
   PLACES = doc.places; ZONES = doc.zones;
   FULL = rest || Promise.resolve(doc);
-  const find = (label) => { const p = label && L.placeByLabel(PLACES, label); return p ? L.toPlace(p, ZONES) : null; };
+  const find = (label) => { const p = L.placeForLink(PLACES, label); return p ? L.toPlace(p, ZONES) : null; };
   let mine = null;
   try { mine = L.biggestIn(PLACES, ZONES, Intl.DateTimeFormat().resolvedOptions().timeZone); } catch { /* no zone: London */ }
-  state.at = find(want.at) || find(!want.at && saved()) || (mine && L.toPlace(mine, ZONES)) || find('London, England, United Kingdom');
+  state.at = find(want.at) || find(saved()) || (mine && L.toPlace(mine, ZONES)) || find('London, England, United Kingdom');
   state.vs = find(want.vs);
+  // A link naming no listed town says so, rather than opening some other town in silence.
+  const lost = [];
+  if (want.at && !find(want.at)) lost.push(`no town of 15,000+ people is called “${want.at}”, so this shows ${state.at.label}`);
+  if (want.vs && !state.vs) lost.push(`“${want.vs}” is not a listed town, so nothing is compared`);
+  if (lost.length) { const t = lost.join('; '); $('nearNote').textContent = `${t[0].toUpperCase()}${t.slice(1)}. Type a town above.`; }
   state.date = want.date;
   $('at').value = state.at.label;
   if (state.vs) { $('vs').value = state.vs.label; $('vsRow').hidden = false; $('addVs').hidden = true; }
