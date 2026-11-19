@@ -391,5 +391,38 @@ if (existsSync(f)) {
   eq('link: empty', link(null), null);
 } else ok('shipped: data/places.json exists (run build.py)', false);
 
+// --- nearest's tie-break, and the links placeForLink will and will not open ------------
+// Added 2026-11-19. mutwatch named `nearest` and `placeForLink` among the exports its
+// equivalence sweep never reaches, and one survivor sat in each region.
+{
+  // [NAME, A1, CC, LAT, LON, POP, TZ]
+  const pl = (name, lat, lon, a1 = 'Region', cc = 'CC', pop = 1000) => [name, a1, cc, lat, lon, pop, 0];
+
+  // kills L331 `if (h < bestH)` -> `<=`: two towns at the SAME point tie on distance, and
+  // the first listed must win. With `<=` the last one does, silently reordering every tie.
+  const tied = [pl('Alpha', 1, 0), pl('Beta', 1, 0)];
+  eq('nearest keeps the first of two towns at the same point', L.nearest(tied, 0, 0)[0][0], 'Alpha');
+  eq('nearest keeps the first whichever order they are listed in',
+     L.nearest([pl('Beta', 1, 0), pl('Alpha', 1, 0)], 0, 0)[0][0], 'Beta');
+
+  eq('nearest of an empty list is nothing', L.nearest([], 0, 0) || null, null);
+  eq('nearest picks the closer of two towns', L.nearest([pl('Far', 10, 0), pl('Near', 1, 0)], 0, 0)[0][0], 'Near');
+  ok('nearest measures one degree of latitude as about 111 km',
+     Math.abs(L.nearest([pl('North', 1, 0)], 0, 0)[1] - 111.19) < 0.1,
+     String(L.nearest([pl('North', 1, 0)], 0, 0)[1]));
+  // longitude wraps: a point just east of 180 finds a town just west of it
+  ok('nearest reaches across the 180th meridian',
+     L.nearest([pl('West', 0, 179.5), pl('Elsewhere', 0, 0)], 0, -179.5)[0][0] === 'West',
+     JSON.stringify(L.nearest([pl('West', 0, 179.5), pl('Elsewhere', 0, 0)], 0, -179.5)));
+
+  const places = [pl('London', 51.5, -0.13, 'England', 'United Kingdom'), pl('Londonderry', 55, -7.3, 'Ulster', 'United Kingdom')];
+  eq('placeForLink opens a full label', L.placeForLink(places, 'London, England, United Kingdom')[0], 'London');
+  eq('placeForLink folds case', L.placeForLink(places, 'london, england, united kingdom')[0], 'London');
+  eq('placeForLink takes the whole name before the first comma', L.placeForLink(places, 'London')[0], 'London');
+  // a name that only STARTS a town's name is not enough -- "?at=Lon" must not open London
+  eq('placeForLink refuses a bare prefix, so a typo is visible', L.placeForLink(places, 'Lon'), null);
+  eq('placeForLink of no label is nothing', [L.placeForLink(places, ''), L.placeForLink(places, null)], [null, null]);
+}
+
 console.log(`${fail ? 'FAILED' : 'ok'}: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
