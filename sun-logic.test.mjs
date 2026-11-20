@@ -82,14 +82,23 @@ const fixedPoint = (lat, lon, [y, m, d], zenith = L.ZENITH) => {
   const ha = (ms) => { const x = at(ms), R = Math.PI / 180;
     return Math.acos(Math.max(-1, Math.min(1, Math.cos(zenith * R) / (Math.cos(lat * R) * Math.cos(x.decl * R)) - Math.tan(lat * R) * Math.tan(x.decl * R)))) * 180 / Math.PI; };
   const solarNoon = (ms) => u + (720 - 4 * lon - at(ms).eot) * 60e3;
-  const errs = [Math.abs(solarNoon(s.noon) - s.noon)];
+  const noonErr = Math.abs(solarNoon(s.noon) - s.noon);
+  const errs = [noonErr];
   if (!s.polar) errs.push(Math.abs(solarNoon(s.rise) - 4 * ha(s.rise) * 60e3 - s.rise), Math.abs(solarNoon(s.set) + 4 * ha(s.set) * 60e3 - s.set));
-  return Math.max(...errs);
+  return [Math.max(...errs), noonErr];
 };
-let worstFix = 0;
+// Measured 2026-11-19 on these six sites: events 2.1 ms worst, noon 0.05 ms. The bounds sit
+// ~5x and ~20x above that: a wrong first guess (4 -> 5 min/deg) leaves 31 ms, and noon
+// evaluated at the wrong fraction of a day (noonMin / 1441) leaves 17 ms. Not every site is
+// this good: on a 3° grid the third pass still leaves up to 0.15 s at 63° S in civil twilight.
+let worstFix = 0, worstNoon = 0;
 for (const [lat, lon] of [[37.44, -122.14], [64.13, -21.9], [-33.87, 151.2], [1.29, 103.85], [65.5, 25], [-54.8, -68.3]])
-  for (let k = [2026, 1, 1]; k[0] === 2026; k = L.addDays(k, 5)) for (const z of [L.ZENITH, L.CIVIL]) worstFix = Math.max(worstFix, fixedPoint(lat, lon, k, z));
-ok('every rise, set and noon is a fixed point of the equations (0.1 s)', worstFix < 100, `${worstFix.toFixed(0)} ms`);
+  for (let k = [2026, 1, 1]; k[0] === 2026; k = L.addDays(k, 5)) for (const z of [L.ZENITH, L.CIVIL]) {
+    const [e, n] = fixedPoint(lat, lon, k, z);
+    worstFix = Math.max(worstFix, e); worstNoon = Math.max(worstNoon, n);
+  }
+ok('every rise, set and noon is a fixed point of the equations (10 ms)', worstFix < 10, `${worstFix.toFixed(1)} ms`);
+ok('every noon is a fixed point of the equations (1 ms)', worstNoon < 1, `${worstNoon.toFixed(3)} ms`);
 
 // --- civil twilight, against USNO (sun 6° below the horizon) -------------------------
 const civ = (date, place) => L.lightOn(date, place);
