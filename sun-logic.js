@@ -263,9 +263,11 @@ export function clockExtremeWords(ex, t) {
   return `${one('Earliest sunset', ex.set, 'evening')} ${one('Latest sunrise', ex.rise, 'morning')}`;
 }
 
-// ---- places: [name, admin1, country, lat, lon, pop, tzIndex], most populous first ------
+// ---- places: [name, admin1, country, lat, lon, pop, tzIndex, near?], most populous first --
+// `near` is there only when a bigger town already has this label (two Hayes in England):
+// build.py names the nearest town, so every label, and every ?at= link, is one town.
 
-export const P = { NAME: 0, A1: 1, CC: 2, LAT: 3, LON: 4, POP: 5, TZ: 6 };
+export const P = { NAME: 0, A1: 1, CC: 2, LAT: 3, LON: 4, POP: 5, TZ: 6, NEAR: 7 };
 
 // Letters NFD does not take apart: "tromso" has to find the slashed o of Tromso, "lodz" the barred l of Lodz.
 const LETTERS = { '\u00f8': 'o', '\u00e6': 'ae', '\u0153': 'oe', '\u00df': 'ss', '\u0142': 'l', '\u0111': 'd', '\u00f0': 'd', '\u00fe': 'th', '\u0131': 'i', '\u0127': 'h' };
@@ -275,7 +277,7 @@ export function fold(s) {
 }
 
 export function placeLabel(p) {
-  const parts = [p[P.NAME]];
+  const parts = [p[P.NEAR] ? `${p[P.NAME]} (near ${p[P.NEAR]})` : p[P.NAME]];
   if (p[P.A1] && p[P.A1] !== p[P.NAME]) parts.push(p[P.A1]);
   parts.push(p[P.CC]);
   return parts.join(', ');

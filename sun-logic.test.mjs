@@ -398,6 +398,17 @@ if (existsSync(f)) {
   eq('link: the start of a name is not a town', link('Lon'), null);
   eq('link: no such town', link('Qwzxville'), null);
   eq('link: empty', link(null), null);
+  // Two towns, one label (two Hayes in England): each must be its own line in the list and
+  // its own link, else the second can be seen but never picked, kept or shared.
+  const labels = D.places.map((p) => L.fold(L.placeLabel(p)));
+  const dup = labels.filter((l, i) => labels.indexOf(l) !== i);
+  eq('shipped: no two towns share a label', [dup.length, dup.slice(0, 3)], [0, []]);
+  const hayes = L.matchPlaces(D.places, 'hayes, england').map(L.placeLabel);
+  eq('shipped: both Hayes listed, the smaller with its neighbour', hayes.filter((l) => l.startsWith('Hayes')), ['Hayes, England, United Kingdom', 'Hayes (near Beckenham), England, United Kingdom']);
+  const small = D.places.find((p) => p[0] === 'Hayes' && p[L.P.NEAR]);
+  eq('link: the hinted label opens that town, not its namesake', L.placeForLink(D.places, 'Hayes (near Beckenham), England, United Kingdom'), small);
+  eq('link: the bare label still opens the bigger one, as old links did', L.placeForLink(D.places, 'Hayes, England, United Kingdom')[L.P.POP], 93928);
+  eq('shipped: a hint never crosses a border', D.places.every((p) => !p[7] || D.places.some((o) => o[0] === p[7] && o[2] === p[2])), true);
 } else ok('shipped: data/places.json exists (run build.py)', false);
 
 // --- nearest's tie-break, and the links placeForLink will and will not open ------------
